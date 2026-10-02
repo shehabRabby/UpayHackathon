@@ -22,6 +22,15 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe("Server-side Gemini", () => {
   it.each([
+    { message: "Ei calculation recorded data er upor ভিত্তি kore.", recommendations: [] },
+    { message: "আপনার লক্ষ্য", recommendations: [] },
+    { message: "Valid Banglish", recommendations: [{ recommendationType: "BUDGET", recommendationText: "খরচ দেখুন", priority: "LOW" }] },
+  ])("rejects Bengali leakage without regenerating or changing output", async answer => {
+    mocks.generateContent.mockResolvedValue({ text: JSON.stringify(answer) });
+    await expect(generateCoaching({ message: "Synthetic", language: "banglish", context: {} })).rejects.toMatchObject({ status: 500, message: expect.stringContaining("Banglish Latin-script requirements") });
+    expect(mocks.generateContent).toHaveBeenCalledTimes(1);
+  });
+  it.each([
     ["en", "Review your spending", "English"],
     ["bn", "আপনার খরচ পর্যালোচনা করুন।", "Bangla using Bengali script"],
     ["banglish", "Apnar khoroch porjalochona korun.", "Banglish (Bangla transliterated into Latin script)"],
@@ -30,6 +39,7 @@ describe("Server-side Gemini", () => {
     mocks.generateContent.mockResolvedValue({ text: JSON.stringify(answer) });
     expect(await generateCoaching({ message, language, context: {} })).toEqual(answer);
     expect(mocks.generateContent.mock.calls[0][0].config.systemInstruction).toContain(instruction);
+    if (language === "banglish") expect(mocks.generateContent.mock.calls[0][0].config.systemInstruction).toContain("Both message and recommendationText must use Latin script; never Bengali script");
   });
   it.each([500, 502, 503])("classifies upstream %s without leaking response data", async status => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});

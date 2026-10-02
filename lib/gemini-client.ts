@@ -3,6 +3,7 @@ import { GoogleGenAI, type Fetch, type HttpOptions } from "@google/genai";
 import { ApiError } from "./api";
 
 export const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 export const GEMINI_TOTAL_TIMEOUT_MS = 45_000;
 export const geminiHttpOptions: HttpOptions = {
   baseUrl: GEMINI_ENDPOINT,
@@ -31,9 +32,9 @@ export function assertGeminiConfigured() {
   return key;
 }
 
-export function createGeminiClient(fetch?: Fetch) {
+export function createGeminiClient(fetch?: Fetch, options: { singleAttempt?: boolean } = {}) {
   const apiKey = assertGeminiConfigured();
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-3.8-flash";
+  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
   if (!/^[a-zA-Z0-9._-]+$/.test(model))
     throw new ApiError(500, "GEMINI_MODEL must be a Gemini model ID");
   // Project association is carried by the key. Pin the official Gemini endpoint
@@ -42,7 +43,9 @@ export function createGeminiClient(fetch?: Fetch) {
     apiKey,
     vertexai: false,
     apiVersion: "v1beta",
-    httpOptions: { ...geminiHttpOptions, ...(fetch ? { fetch } : {}) },
+    httpOptions: { ...geminiHttpOptions,
+      ...(options.singleAttempt ? { retryOptions: { ...geminiHttpOptions.retryOptions, attempts: 1 } } : {}),
+      ...(fetch ? { fetch } : {}) },
   });
   return {
     ai,

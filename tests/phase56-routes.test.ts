@@ -96,6 +96,19 @@ beforeEach(() => {
 });
 
 describe("Phase 5/6 route guarantees", () => {
+  it.each([
+    { message: "Ei calculation recorded data er upor ভিত্তি kore.", recommendations: [] },
+    { message: "Valid Banglish", recommendations: [{ recommendationType: "BUDGET", recommendationText: "খরচ দেখুন", priority: "LOW" }] },
+  ])("never persists a Banglish turn with Bengali leakage", async answer => {
+    mocks.ai.mockResolvedValue(answer);
+    const response = await chat(request("chat", { message: "Help", language: "banglish", requestId: id }), context());
+    expect(response.status).toBe(500);
+    expect((await response.json()).message).toContain("Banglish Latin-script requirements");
+    expect(mocks.ai).toHaveBeenCalledTimes(1);
+    expect(mocks.db.ai_messages.create).not.toHaveBeenCalled();
+    expect(mocks.db.recommendations.create).not.toHaveBeenCalled();
+    expect(mocks.db.ai_conversations.updateMany).not.toHaveBeenCalled();
+  });
   it.each(["en", "bn", "banglish"] as const)("persists %s Unicode text without changing it", async language => {
     const text = language === "bn" ? "আপনার সঞ্চয় লক্ষ্য পর্যালোচনা করুন।" : language === "banglish" ? "Apnar sonchoy lokkho porjalochona korun." : "Review your savings goal.";
     mocks.ai.mockResolvedValue({ message: text, recommendations: [{ recommendationType: "GOAL", recommendationText: text, priority: "LOW" }] });
@@ -207,7 +220,7 @@ describe("Phase 5/6 route guarantees", () => {
     });
     mocks.db.recommendations.create.mockResolvedValue(rec);
     const response = await chat(
-      request("chat", { message: "Ki korbo?", language: "banglish" }),
+      request("chat", { message: "Ki korbo?", language: "bn" }),
       context(),
     );
     expect(response.status).toBe(201);
@@ -221,7 +234,7 @@ describe("Phase 5/6 route guarantees", () => {
     expect(mocks.db.recommendations.create.mock.calls[0][0].data.user_id).toBe(
       userId,
     );
-    expect(mocks.ai.mock.calls[0][0].language).toBe("banglish");
+    expect(mocks.ai.mock.calls[0][0].language).toBe("bn");
     expect(mocks.db.$transaction.mock.calls[1][1]).toEqual({
       isolationLevel: "Serializable",
     });

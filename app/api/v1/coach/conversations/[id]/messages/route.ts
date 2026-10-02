@@ -9,6 +9,7 @@ import { generateCoaching, type CoachHistory } from "@/lib/gemini";
 import { messageData, recommendationData } from "@/lib/coach-data";
 import { replayTurn, turnIds } from "@/lib/coach-retry";
 import { coachDiagnostic } from "@/lib/coach-diagnostics";
+import { assertCoachLanguage } from "@/lib/coach-language";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,7 @@ export const POST = handle(async (request: Request, context: IdContext) => {
   stage = "generation";
   const answer = await generateCoaching({ message: input.message, language: input.language ?? prepared.preferredLanguage,
     context: prepared.context, history: prepared.history });
+  assertCoachLanguage(answer, input.language ?? prepared.preferredLanguage);
   const stored = await prisma.$transaction(async tx => {
     stage = "conversation_persistence";
     const timestamp = new Date(Math.max(Date.now(), prepared.conversation.updated_at.getTime() + 1));

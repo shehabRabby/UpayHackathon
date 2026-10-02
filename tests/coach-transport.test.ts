@@ -7,6 +7,11 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 describe("Actual SDK multilingual coaching transport", () => {
+  it("does not retry a failed live-verification coaching request", async () => {
+    const transport = vi.fn().mockResolvedValue(Response.json({ error: { code: 503, message: "Synthetic busy" } }, { status: 503 }));
+    await expect(generateCoaching({ message: "Help", language: "en", context: {} }, transport, { singleAttempt: true })).rejects.toMatchObject({ status: 500 });
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
   it.each([["en", "Review spending."], ["bn", "আপনার খরচ পর্যালোচনা করুন।"], ["banglish", "Apnar khoroch porjalochona korun."]] as const)("round-trips %s through UTF-8 SDK JSON and schema", async (language, message) => {
     const transport = vi.fn().mockResolvedValue(response(message));
     const answer = await generateCoaching({ message, language, context: { synthetic: true } }, transport);
