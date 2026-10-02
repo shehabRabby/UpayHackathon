@@ -1,0 +1,220 @@
+// Prisma ORM 7.x. Connection URLs are configured outside this schema.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Required to preserve public.users -> auth.users in Prisma 7.
+  schemas = ["public", "auth"]
+}
+// Section 6.3 names these four values; its "etc." is unspecified.
+// Add further transaction types once their names are defined.
+enum TransactionType {
+  CASH_IN
+  CASH_OUT
+  MERCHANT_PAY
+  MOBILE_RECHARGE
+  @@schema("public")
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  CANCELLED
+  @@schema("public")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  @@schema("public")
+}
+
+enum RecommendationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  @@schema("public")
+}
+
+enum RecommendationStatus {
+  NEW
+  VIEWED
+  COMPLETED
+  DISMISSED
+  @@schema("public")
+}
+
+// Decimal precision is an implementation choice: money (18,2), scores (5,2).
+// SQL-only requirements are in supplemental-constraints.sql.
+model users {
+  // Supply the authenticated Supabase auth.users.id; never generate a new UUID.
+  user_id            String   @id @db.Uuid
+  auth_user          SupabaseAuthUser @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_auth_user_id_fkey")
+  full_name          String   @db.VarChar
+  email              String   @unique @db.VarChar
+  phone              String?  @db.VarChar
+  preferred_language String   @db.VarChar
+  created_at         DateTime @default(now()) @db.Timestamp(6)
+  updated_at         DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  transactions       transactions[]
+  savings_goals      savings_goals[]
+  financial_health   financial_health[]
+  financial_insights financial_insights[]
+  ai_conversations   ai_conversations[]
+  recommendations    recommendations[]
+  @@schema("public")
+}
+
+model categories {
+  category_id   String   @id @default(uuid()) @db.Uuid
+  category_name String   @db.VarChar
+  category_type String   @db.VarChar // income / expense
+  description   String?  @db.Text
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now()) @db.Timestamp(6)
+
+  transactions transactions[]
+  @@schema("public")
+}
+
+model transactions {
+  transaction_id   String          @id @default(uuid()) @db.Uuid
+  user_id          String          @db.Uuid
+  category_id      String          @db.Uuid
+  transaction_type TransactionType
+  amount           Decimal         @db.Decimal(18, 2)
+  merchant_name    String?         @db.VarChar
+  description      String?         @db.Text
+  transaction_date DateTime        @db.Timestamp(6)
+  source           String          @db.VarChar // mock / manual / upay_future
+  created_at       DateTime        @default(now()) @db.Timestamp(6)
+
+  user               users                @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  category           categories           @relation(fields: [category_id], references: [category_id], onDelete: Restrict)
+  goal_contributions goal_contributions[]
+
+  @@index([user_id, transaction_date])
+  @@index([category_id])
+  @@schema("public")
+}
+
+model savings_goals {
+  goal_id        String     @id @default(uuid()) @db.Uuid
+  user_id        String     @db.Uuid
+  goal_name      String     @db.VarChar
+  target_amount  Decimal    @db.Decimal(18, 2)
+  current_amount Decimal    @default(0) @db.Decimal(18, 2)
+  target_date    DateTime   @db.Date
+  status         GoalStatus @default(ACTIVE)
+  created_at     DateTime   @default(now()) @db.Timestamp(6)
+  updated_at     DateTime   @default(now()) @updatedAt @db.Timestamp(6)
+
+  user               users                @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  goal_contributions goal_contributions[]
+
+  @@index([user_id, status])
+  @@schema("public")
+}
+
+model goal_contributions {
+  contribution_id   String   @id @default(uuid()) @db.Uuid
+  goal_id           String   @db.Uuid
+  transaction_id    String?  @db.Uuid
+  amount            Decimal  @db.Decimal(18, 2)
+  contribution_date DateTime @db.Timestamp(6)
+
+  goal        savings_goals @relation(fields: [goal_id], references: [goal_id], onDelete: Cascade)
+  transaction transactions? @relation(fields: [transaction_id], references: [transaction_id], onDelete: SetNull)
+
+  @@index([goal_id, contribution_date])
+  @@index([transaction_id])
+  @@schema("public")
+}
+
+model financial_health {
+  health_id       String   @id @default(uuid()) @db.Uuid
+  user_id         String   @db.Uuid
+  health_score    Decimal  @db.Decimal(5, 2)
+  savings_score   Decimal  @db.Decimal(5, 2)
+  spending_score  Decimal  @db.Decimal(5, 2)
+  goal_score      Decimal  @db.Decimal(5, 2)
+  emergency_score Decimal  @db.Decimal(5, 2)
+  assessment_date DateTime @db.Date
+
+  user users @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id, assessment_date])
+  @@schema("public")
+}
+
+model financial_insights {
+  insight_id   String   @id @default(uuid()) @db.Uuid
+  user_id      String   @db.Uuid
+  insight_type String   @db.VarChar
+  title        String   @db.VarChar
+  description  String   @db.Text
+  metadata     Json?    @db.JsonB
+  created_at   DateTime @default(now()) @db.Timestamp(6)
+
+  user users @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+  @@schema("public")
+}
+
+model ai_conversations {
+  conversation_id    String   @id @default(uuid()) @db.Uuid
+  user_id            String   @db.Uuid
+  conversation_title String?  @db.VarChar
+  created_at         DateTime @default(now()) @db.Timestamp(6)
+  updated_at         DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  user        users         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  ai_messages ai_messages[]
+
+  @@index([user_id, updated_at])
+  @@schema("public")
+}
+
+model ai_messages {
+  message_id      String      @id @default(uuid()) @db.Uuid
+  conversation_id String      @db.Uuid
+  role            MessageRole
+  message_content String      @db.Text
+  created_at      DateTime    @default(now()) @db.Timestamp(6)
+
+  conversation ai_conversations @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+
+  @@index([conversation_id, created_at])
+  @@schema("public")
+}
+
+model recommendations {
+  recommendation_id   String                 @id @default(uuid()) @db.Uuid
+  user_id             String                 @db.Uuid
+  recommendation_type String                 @db.VarChar
+  recommendation_text String                 @db.Text
+  priority            RecommendationPriority
+  status              RecommendationStatus   @default(NEW)
+  created_at          DateTime               @default(now()) @db.Timestamp(6)
+
+  user users @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id, status, created_at])
+  @@schema("public")
+}
+
+// Minimal reference only. All auth tables are externally managed in the config;
+// Prisma must never create, alter, or delete Supabase Auth tables.
+model SupabaseAuthUser {
+  id String @id @db.Uuid
+  profile users?
+
+  @@map("users")
+  @@schema("auth")
+}

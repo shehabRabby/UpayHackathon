@@ -1,0 +1,44 @@
+{
+  "name": "upay-financial-coach-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "prisma generate && next build",
+    "start": "next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "7.10.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/config": "7.10.0",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.117.2",
+    "dotenv": "^17.2.3",
+    "next": "16.3.8",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "4.6.5"
+  },
+  "overrides": {
+    "mysql2": "3.24.5",
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.2",
+      "effect": "3.22.2"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "prisma": "7.10.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

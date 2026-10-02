@@ -126,6 +126,8 @@ Authorization: Bearer <access_token>
 
 Current mode is the default and reads fresh transaction/goal metrics without writing. POST `/api/v1/financial-health/refresh` accepts `{ "lookbackMonths": 3, "store": true }`, with both fields optional. With `store:true` it creates a snapshot and returns 201; `store:false` returns 200 without storage. Only server-computed scores are accepted.
 
+Savings-plan deadline feasibility prorates projected monthly saving over the actual remaining days (using 30-day months). This prevents a short deadline from being marked feasible merely because the rounded monthly target fits a full month's surplus.
+
 `wellness-v1` has four 0–100 components, each weighted 25%:
 
 | Component | Illustrative formula |
