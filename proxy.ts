@@ -1,6 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const methods: [RegExp, string[]][] = [
+  [/^\/api\/v1\/coach\/conversations$/, ["GET", "HEAD", "POST"]],
+  [/^\/api\/v1\/coach\/conversations\/[^/]+$/, ["DELETE"]],
+  [/^\/api\/v1\/coach\/conversations\/[^/]+\/messages$/, ["GET", "HEAD", "POST"]],
+  [/^\/api\/v1\/recommendations$/, ["GET", "HEAD"]],
+  [/^\/api\/v1\/recommendations\/[^/]+$/, ["PATCH"]],
+  [/^\/api\/v1\/simulator\/what-if$/, ["POST"]],
+  [/^\/api\/v1\/affordability\/check$/, ["POST"]],
   [/^\/api\/v1\/analytics\/spending$/, ["GET", "HEAD"]],
   [/^\/api\/v1\/analytics\/refresh$/, ["POST"]],
   [/^\/api\/v1\/financial-health$/, ["GET", "HEAD"]],
@@ -13,7 +20,7 @@ const methods: [RegExp, string[]][] = [
   [/^\/api\/v1\/transactions\/[^/]+$/, ["GET", "HEAD", "PATCH", "DELETE"]],
   [/^\/api\/v1\/dashboard\/summary$/, ["GET", "HEAD"]],
   [/^\/api\/v1\/categories$/, ["GET", "HEAD"]],
-  [/^\/api\/v1\/auth\/profile$/, ["POST"]],
+  [/^\/api\/v1\/auth\/profile$/, ["GET", "HEAD", "POST"]],
 ];
 
 export function proxy(request: NextRequest) {

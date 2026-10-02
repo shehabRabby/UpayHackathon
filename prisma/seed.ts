@@ -10,11 +10,15 @@ async function main() {
     { category_name: "Transport", category_type: "expense" },
   ];
   for (const category of categories) {
-    if (!await prisma.categories.findFirst({ where: category })) {
+    if (!(await prisma.categories.findFirst({ where: category }))) {
       await prisma.categories.create({ data: category });
     }
   }
   console.log("Default categories are available");
 }
-main().catch(() => { console.error("Category seed failed; check database connectivity"); process.exitCode = 1; })
+main()
+  .catch(() => {
+    console.error("Category seed failed; check database connectivity");
+    process.exitCode = 1;
+  })
   .finally(() => prisma.$disconnect());

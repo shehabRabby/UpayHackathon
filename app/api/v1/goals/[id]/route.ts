@@ -23,7 +23,7 @@ export const PATCH = handle(async (request: Request, context: IdContext) => {
   const result = await prisma.$transaction(async tx => {
     const goal = await tx.savings_goals.findFirst({ where: { goal_id: id, user_id: userId } });
     if (!goal) throw new ApiError(404, "Savings goal not found");
-    if (goal.status !== "ACTIVE") throw new ApiError(403, "Only active savings goals can be updated");
+    if (!["ACTIVE", "PAUSED"].includes(goal.status)) throw new ApiError(403, "Only active or paused savings goals can be updated");
     const target = new Prisma.Decimal(input.targetAmount ?? goal.target_amount);
     const current = new Prisma.Decimal(input.currentAmount ?? goal.current_amount);
     if (current.gt(target)) throw new ApiError(400, "Current amount cannot exceed target amount");

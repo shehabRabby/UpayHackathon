@@ -9,13 +9,22 @@
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:browser": "playwright test",
+    "audit:project": "node --import tsx scripts/audit-project.ts",
+    "verify:database": "node --import tsx scripts/verify-database.ts",
+    "verify:analytics": "node --import tsx scripts/verify-phase3.ts",
+    "verify:auth": "node --import tsx scripts/verify-auth.ts",
+    "verify:startup": "node scripts/verify-startup.mjs",
+    "verify:gemini": "node --conditions=react-server --import tsx scripts/verify-gemini.ts",
+    "diagnose:gemini": "node --conditions=react-server --import tsx scripts/diagnose-gemini.ts",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "7.10.0",
+    "@google/genai": "^2.26.0",
     "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
     "@prisma/config": "7.10.0",
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.117.2",
@@ -23,6 +32,7 @@
     "next": "16.3.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "server-only": "^0.0.1",
     "zod": "4.6.5"
   },
   "overrides": {
@@ -33,6 +43,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

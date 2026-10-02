@@ -6,6 +6,14 @@ import { profileCreate } from "@/lib/validation";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+export const GET = handle(async (request: Request) => {
+  const user = await authenticatedUser(request);
+  const profile = await prisma.users.findUnique({ where: { user_id: user.id } });
+  if (!profile) throw new ApiError(403, "Create your application profile first");
+  return success({ userId: profile.user_id, fullName: profile.full_name, email: profile.email,
+    phone: profile.phone, preferredLanguage: profile.preferred_language }, "Application profile retrieved");
+});
+
 export const POST = handle(async (request: Request) => {
   const user = await authenticatedUser(request);
   const input = await body(request, profileCreate);
