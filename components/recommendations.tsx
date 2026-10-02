@@ -26,7 +26,7 @@ export function Recommendations() {
             <span className="badge">
               {item.recommendationType} · {item.priority}
             </span>
-            <small>{item.status}</small>
+            <small className="status-label" data-status={item.status}>{item.status}</small>
           </div>
           <p>{item.recommendationText}</p>
           <div className="actions">

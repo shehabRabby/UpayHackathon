@@ -2,6 +2,7 @@
 import { cloneElement, useId, type ReactElement, type ReactNode } from "react";
 import type { Meta, Goal, Spending } from "@/lib/frontend/types";
 import Link from "next/link";
+import { ProductIcon } from "./brand";
 
 export const money = (value: number) =>
   new Intl.NumberFormat("en-BD", {
@@ -37,6 +38,7 @@ export function PageTitle({
   return (
     <header className="page-title">
       <div>
+        <p className="eyebrow">YOUR FINANCIAL WORKSPACE</p>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
@@ -117,10 +119,11 @@ export function Metric({
   value: ReactNode;
   note?: string;
 }) {
+  const currency = typeof value === "string" ? /^(BDT\s+)(.+)$/.exec(value) : null;
   return (
     <section className="metric">
-      <p>{label}</p>
-      <strong>{value}</strong>
+      <div className="metric-top"><p>{label}</p><span className="metric-icon"><ProductIcon name="analytics" /></span></div>
+      <strong className={currency && currency[0].length > 18 ? "long-value" : undefined}>{currency ? <><span className="currency-code">{currency[1]}</span><span className="currency-value">{currency[2]}</span></> : value}</strong>
       {note && <small>{note}</small>}
     </section>
   );
@@ -167,7 +170,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
         <Link href={`/goals/${goal.goalId}`}>
           <h3>{goal.goalName}</h3>
         </Link>
-        <span className="badge">{goal.status}</span>
+        <span className="badge" data-status={goal.status}>{goal.status}</span>
       </div>
       <progress
         value={goal.progressPercentage}

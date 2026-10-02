@@ -486,11 +486,13 @@ test("switching conversations clears another conversation's draft and error", as
     return route.fulfill({ status: 500, json: { success: false, message: "Synthetic coach failure", data: null } });
   });
   await login(page); await page.goto("/coach");
+  await openConversations(page);
   await page.getByRole("button", { name: /First fixture conversation/ }).click();
   await page.getByLabel("Your message").fill("Keep this failed draft");
   await page.getByRole("button", { name: "Send to coach", exact: true }).click();
   await expect(page.locator("main").getByRole("alert")).toContainText("Synthetic coach failure");
   await expect(page.getByLabel("Your message")).toHaveValue("Keep this failed draft");
+  await openConversations(page);
   await page.getByRole("button", { name: /Second fixture conversation/ }).click();
   await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
   await expect(page.getByLabel("Your message")).toHaveValue("");
@@ -519,14 +521,22 @@ for (const width of [320, 375, 390, 768, 1024, 1280, 1440]) {
       await page.goto(path);
       await expect(path === "/missing-page" ? page.getByRole("heading", { name: "404", exact: true }) : page.locator("main")).toBeVisible();
       await expect(page.locator(".loading")).toHaveCount(0);
+      for (const amount of await page.locator(".metric .currency-value").all()) {
+        const fits = await amount.evaluate(element => {
+          const rect = element.getBoundingClientRect(), card = element.closest(".metric")!.getBoundingClientRect();
+          return rect.right <= card.right && rect.height <= parseFloat(getComputedStyle(element).lineHeight) + 1;
+        });
+        expect(fits, `${path}: currency amount must fit without splitting its digits`).toBe(true);
+      }
       const overflow = await page.evaluate(() => ({ width: innerWidth, document: document.documentElement.scrollWidth, elements: [...document.querySelectorAll("body *")].filter(element => { const bounds = element.getBoundingClientRect(); return bounds.width > 0 && bounds.right > innerWidth + 1 && !element.closest(".table-wrap,.messages,.conversation-list"); }).map(element => element.className || element.tagName).slice(0, 8) }));
       expect(overflow.document, `${path}: ${JSON.stringify(overflow)}`).toBeLessThanOrEqual(width);
     };
-    for (const path of ["/", "/login", "/signup", "/missing-page"]) await check(path);
+    for (const path of ["/", "/about", "/login", "/signup", "/missing-page"]) await check(path);
     await page.goto("/auth/callback");
     await expect(page).toHaveURL(/\/login\?confirmation=failed$/);
     await login(page);
     for (const path of ["/dashboard", "/transactions", "/goals", `/goals/${goalId}`, "/analytics", "/planning", "/profile", "/coach"]) await check(path);
+    await openConversations(page);
     await page.getByRole("button", { name: /ConversationConversation/ }).click();
     await expect(page.locator("article.message")).toHaveCount(3);
     await expect(page.locator("article.message").nth(1)).toContainText("আপনার");
@@ -592,7 +602,7 @@ test("recommendation actions follow terminal-state rules", async ({ page }) => {
 });
 test("coach retry keeps its request ID after an uncertain send and reload", async ({ page }) => {
   await fixture(page); await login(page);
-  await page.getByRole("link", { name: "AI Coach", exact: true }).click();
+  await navigate(page, "AI Coach");
   await page.getByLabel("Conversation title").fill("Retry test");
   await page.getByRole("button", { name: "New conversation", exact: true }).click();
   const keys: string[] = [];
@@ -607,6 +617,7 @@ test("coach retry keeps its request ID after an uncertain send and reload", asyn
   await page.getByRole("button", { name: "Send to coach", exact: true }).click();
   await expect(page.locator("main").getByRole("alert")).toContainText("Cannot connect");
   await page.reload();
+  await openConversations(page);
   await page.getByRole("button", { name: /Retry test/ }).click();
   await page.getByLabel("Coach language").selectOption("bn");
   await page.getByLabel("Your message").fill("আমার সঞ্চয় নিয়ে পরামর্শ দিন।");
@@ -630,7 +641,7 @@ test("empty records and recoverable backend errors", async ({ page }) => {
       json: { success: false, message: "Temporarily unavailable", data: null },
     }),
   );
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await navigate(page, "Transactions");
   await expect(page.locator("main").getByRole("alert")).toContainText(
     "Temporarily unavailable",
   );
@@ -688,7 +699,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await expect(
     page.getByRole("heading", { name: "Hello, Demo" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await navigate(page, "Transactions");
   await page.getByLabel("Category", { exact: true }).selectOption(incomeId);
   await page.getByLabel("Amount (BDT)", { exact: true }).fill("1000");
   await page
@@ -705,7 +716,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   ).toContainText("Transaction updated");
   await expect(page.getByLabel("Note (optional)")).toHaveValue("Edited note");
   await expect(page.getByLabel("Amount (BDT)", { exact: true })).toHaveValue("1000");
-  await page.getByRole("link", { name: "Savings goals", exact: true }).click();
+  await navigate(page, "Savings goals");
   await page.getByLabel("Goal name").fill("Emergency fund");
   await page.getByLabel("Target amount (BDT)").fill("1000");
   await page.getByLabel("Already saved (BDT)").fill("100");
@@ -738,7 +749,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await expect(page.getByText("Projected monthly saving", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Calculate savings plan" }).click();
   await expect(page.getByText("Projected monthly saving", { exact: true })).toHaveCount(0);
-  await page.getByRole("link", { name: "Analytics", exact: true }).click();
+  await navigate(page, "Analytics");
   await expect(
     page.getByRole("heading", { name: "Monthly trends" }),
   ).toBeVisible();
@@ -750,7 +761,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await expect(
     page.getByRole("status").and(page.locator(".notice")),
   ).toContainText("Wellness assessment saved");
-  await page.getByRole("link", { name: "Plan & affordability" }).click();
+  await navigate(page, "Plan & affordability");
   await page.getByLabel("Monthly income (BDT)").fill("1000");
   await page.getByLabel("Monthly expenses (BDT)").fill("500");
   await page.getByLabel("Requested monthly saving (BDT)").fill("100");
@@ -763,7 +774,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await expect(
     page.getByRole("heading", { name: "INSUFFICIENT DATA" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "AI Coach", exact: true }).click();
+  await navigate(page, "AI Coach");
   await page.getByLabel("Conversation title").fill("My plan");
   await page.getByRole("button", { name: "New conversation" }).click();
   await expect(page.getByLabel("Conversation title")).toHaveValue("");
@@ -776,7 +787,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   ).toBeVisible();
   await page.getByRole("button", { name: "Complete", exact: true }).click();
   await expect(page.getByText("COMPLETED", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Profile", exact: true }).click();
+  await navigate(page, "Profile");
   await page.getByLabel("Full name").fill("  Demo Updated  ");
   await page.getByLabel("Preferred coaching language").selectOption("en");
   await page.getByRole("button", { name: "Save profile" }).click();
@@ -789,7 +800,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await expect(page.getByLabel("Preferred coaching language")).toHaveValue(
     "en",
   );
-  await page.getByRole("link", { name: "AI Coach", exact: true }).click();
+  await navigate(page, "AI Coach");
   await page.getByRole("button", { name: /My plan/ }).click();
   page.once("dialog", (dialog) => dialog.accept());
   await page
@@ -806,11 +817,137 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
   await login(page);
   await expect(
     page.getByRole("heading", { name: "Hello, Demo" }),
   ).toBeVisible();
+  expect(state.errors).toEqual([]);
+});
+
+async function openAppMenu(page: Page) {
+  await expect(page.locator(".sidebar")).toBeVisible();
+  const toggle = page.locator(".sidebar").getByRole("button", { name: "Menu", exact: true });
+  if (await toggle.isVisible() && await toggle.getAttribute("aria-expanded") !== "true") await toggle.click();
+}
+async function openConversations(page: Page) {
+  await expect(page.locator(".conversation-panel")).toBeVisible();
+  const toggle = page.getByRole("button", { name: "Conversations", exact: true });
+  if (await toggle.isVisible() && await toggle.getAttribute("aria-expanded") !== "true") await toggle.click();
+}
+async function navigate(page: Page, name: string) {
+  await openAppMenu(page);
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name, exact: true }).click();
+  if (name === "AI Coach") await openConversations(page);
+}
+async function openPublicMenu(page: Page) {
+  const toggle = page.locator(".public-header").getByRole("button", { name: "Menu", exact: true });
+  if (await toggle.isVisible() && await toggle.getAttribute("aria-expanded") !== "true") await toggle.click();
+}
+
+test("public pages use static demos and signed-out navigation with working CTAs", async ({ page }) => {
+  const state = await fixture(page);
+  const financialRequests: string[] = [];
+  page.on("request", request => { if (request.url().includes("/api/v1/")) financialRequests.push(new URL(request.url()).pathname); });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /Understand your money/, level: 1 })).toBeVisible();
+  await expect(page.getByText("Illustrative demo", { exact: true }).first()).toBeVisible();
+  await openPublicMenu(page);
+  const header = page.locator(".public-header");
+  await expect(header.getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Get started", exact: true })).toHaveAttribute("href", "/signup");
+  await expect(header.getByRole("button", { name: "Sign out", exact: true })).toHaveCount(0);
+  await header.getByRole("link", { name: "About", exact: true }).click();
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(page.getByRole("heading", { name: "Financial clarity should be easier." })).toBeVisible();
+  await expect(page.locator("main")).toContainText("no live Upay wallet connection");
+  expect(financialRequests).toEqual([]);
+  await page.locator("main").getByRole("link", { name: "Get started", exact: true }).click();
+  await expect(page).toHaveURL(/\/signup$/);
+  await page.locator("main").getByRole("link", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.locator("main").getByRole("link", { name: "Create an account", exact: true }).click();
+  await expect(page).toHaveURL(/\/signup$/);
+  expect(state.errors).toEqual([]);
+});
+
+test("public navigation and home CTAs follow the existing authenticated session and logout", async ({ page }) => {
+  const state = await fixture(page); await login(page); await page.goto("/");
+  await expect(page.locator("main").getByRole("link", { name: "Go to dashboard", exact: true })).toBeVisible();
+  await expect(page.locator("main").getByRole("link", { name: "Get started", exact: true })).toHaveCount(0);
+  await openPublicMenu(page);
+  const header = page.locator(".public-header");
+  await expect(header.getByRole("link", { name: "Dashboard", exact: true })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
+  await expect(header.getByRole("link", { name: "Get started", exact: true })).toHaveCount(0);
+  await header.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.locator("main").getByRole("link", { name: "Get started", exact: true })).toBeVisible();
+  await page.goto("/dashboard"); await expect(page).toHaveURL(/\/login$/);
+  expect(state.errors).toEqual([]);
+});
+
+test("mobile disclosures support keyboard escape, active routes and reduced motion", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fixture(page); await page.goto("/");
+  const publicToggle = page.locator(".public-header").getByRole("button", { name: "Menu", exact: true });
+  await expect(publicToggle).toHaveAttribute("aria-expanded", "false");
+  await publicToggle.focus(); await page.keyboard.press("Enter");
+  await expect(publicToggle).toHaveAttribute("aria-expanded", "true");
+  await page.locator(".public-header").getByRole("link", { name: "About", exact: true }).focus();
+  await page.keyboard.press("Escape"); await expect(publicToggle).toBeFocused();
+  await expect(publicToggle).toHaveAttribute("aria-expanded", "false");
+  await login(page);
+  const appToggle = page.locator(".sidebar").getByRole("button", { name: "Menu", exact: true });
+  await expect(appToggle).toHaveAttribute("aria-expanded", "false");
+  await appToggle.focus(); await page.keyboard.press("Enter");
+  const dashboard = page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Dashboard", exact: true });
+  await expect(dashboard).toHaveAttribute("aria-current", "page");
+  await dashboard.focus(); await page.keyboard.press("Escape"); await expect(appToggle).toBeFocused();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await appToggle.evaluate(element => getComputedStyle(element).transitionDuration)).toBe("0s");
+  expect(await appToggle.evaluate(element => getComputedStyle(element).outlineStyle)).toBe("solid");
+});
+
+test("coach topic suggestions prepare a draft without generating or sending messages", async ({ page }) => {
+  const state = await fixture(page); await login(page); await page.goto("/coach");
+  const sends: string[] = [];
+  page.on("request", request => { if (request.method() === "POST" && new URL(request.url()).pathname.endsWith("/messages")) sends.push(request.url()); });
+  await page.getByRole("button", { name: "Help me plan my emergency fund", exact: true }).click();
+  await expect(page.getByLabel("Conversation title")).toBeVisible();
+  await page.getByLabel("Conversation title").fill("Suggested topic");
+  await page.getByRole("button", { name: "New conversation", exact: true }).click();
+  await expect(page.getByLabel("Your message")).toHaveValue("Help me plan my emergency fund");
+  expect(sends).toEqual([]);
+  expect(state.errors).toEqual([]);
+});
+
+test("visual review captures static public, auth and synthetic workspace screens", async ({ page }, testInfo) => {
+  const state = await fixture(page, true);
+  await page.goto("/");
+  await expect(page.locator("main").getByRole("link", { name: "Get started", exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("home.png"), fullPage: true });
+  await page.goto("/login");
+  await page.screenshot({ path: testInfo.outputPath("login.png"), fullPage: true });
+  await page.goto("/signup");
+  await page.screenshot({ path: testInfo.outputPath("signup.png"), fullPage: true });
+  await page.goto("/about");
+  await page.screenshot({ path: testInfo.outputPath("about.png"), fullPage: true });
+  await login(page); await expect(page.getByRole("heading", { name: /^Hello,/ })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("dashboard.png"), fullPage: true });
+  for (const [path, name] of [["/transactions", "transactions"], ["/goals", "goals"], [`/goals/${goalId}`, "goal-detail"], ["/analytics", "analytics"], ["/planning", "planning"], ["/profile", "profile"]]) {
+    await page.goto(path);
+    await expect(page.locator("main h1")).toBeVisible();
+    await expect(page.locator(".loading")).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
+  }
+  await page.goto("/coach");
+  await expect(page.getByRole("heading", { name: "Start a conversation about your finances." })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("coach-empty.png"), fullPage: true });
+  await openConversations(page);
+  await page.getByRole("button", { name: /ConversationConversation/ }).click();
+  await expect(page.locator("article.message")).toHaveCount(3);
+  await page.screenshot({ path: testInfo.outputPath("coach.png"), fullPage: true });
   expect(state.errors).toEqual([]);
 });

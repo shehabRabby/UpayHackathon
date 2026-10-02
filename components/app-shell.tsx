@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "./auth-provider";
 import { Notice } from "./ui";
+import { Brand, ProductIcon } from "./brand";
 
 const navigation = [
   ["/dashboard", "Dashboard"],
@@ -20,6 +21,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false),
     [logoutError, setLogoutError] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false), menuId = useId(), menuButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!auth.loading && !auth.session) router.replace("/login");
   }, [auth.loading, auth.session, router]);
@@ -51,40 +53,39 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <Link href="/dashboard" className="brand">
-          <span className="brand-mark">u</span>
-          <span>
-            Upay
-            <br />
-            <small>Financial Coach</small>
-          </span>
-        </Link>
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <aside className="sidebar" onKeyDown={event => { if (event.key === "Escape" && menuOpen) { setMenuOpen(false); menuButton.current?.focus(); } }}>
+        <div className="sidebar-header"><Brand href="/dashboard" /><button ref={menuButton} type="button" className="navigation-toggle secondary" aria-expanded={menuOpen} aria-controls={menuId} onClick={() => setMenuOpen(value => !value)}><ProductIcon name={menuOpen ? "close" : "menu"} />Menu</button></div>
+        <div id={menuId} className="app-navigation" data-open={menuOpen}>
+        <p className="nav-caption">YOUR WORKSPACE</p>
         <nav aria-label="Main navigation">
           {navigation.map(([href, label]) => (
             <Link
               key={href}
               href={href}
+              onClick={() => setMenuOpen(false)}
               aria-current={
                 path === href || path.startsWith(`${href}/`)
                   ? "page"
                   : undefined
               }
             >
-              {label}
+              <ProductIcon name={href.slice(1)} />{label}
             </Link>
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <p>{auth.profile?.fullName ?? "Your account"}</p>
+          <div className="account-identity"><span className="user-avatar" aria-hidden="true">{auth.profile?.fullName.slice(0, 1).toUpperCase() ?? "U"}</span><div><p>{auth.profile?.fullName ?? "Your account"}</p><small>{auth.profile?.email ?? "Private account"}</small></div></div>
           <button className="secondary" disabled={loggingOut} onClick={logout}>
             {loggingOut ? "Signing out…" : "Sign out"}
           </button>
           <Notice error={logoutError} />
         </div>
+        </div>
       </aside>
       <div className="workspace">
         <div className="prototype-banner">
+          <ProductIcon name="shield" />
           Prototype · Your recorded finances. No live Upay wallet connection.
         </div>
         <main id="main-content">

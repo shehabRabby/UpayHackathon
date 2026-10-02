@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "./auth-provider";
 import { Field, Notice } from "./ui";
+import { PublicHeader, PublicFooter } from "./public-layout";
+import { ProductIcon } from "./brand";
 
 export function AuthForm({ signup = false }: { signup?: boolean }) {
   const auth = useAuth(),
@@ -77,10 +79,8 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
     }
   }
   return (
-    <main className="auth-page">
-      <Link href="/" className="brand">
-        <span className="brand-mark">u</span> Upay Financial Coach
-      </Link>
+    <><PublicHeader /><main id="main-content" className="auth-page">
+      <section className="auth-story"><p className="eyebrow">YOUR MONEY, WITH MORE CLARITY</p><h2>{signup ? <>A clearer picture.<br /><span>A more purposeful plan.</span></> : <>Pick up where<br /><span>your plan left off.</span></>}</h2><p>Bring your recorded finances together, build savings goals and explore your next decision with useful context.</p><ul className="feature-list"><li><ProductIcon name="analytics" /> Understand your income and spending</li><li><ProductIcon name="goals" /> Make steady progress toward your goals</li><li><ProductIcon name="coach" /> Get guidance in your preferred language</li></ul><p className="auth-scope">Private account access · Recorded financial data<br />Prototype. No live Upay wallet connection.</p></section>
       <section className="card auth-card">
         <p className="eyebrow">A LITTLE CLARITY GOES A LONG WAY</p>
         <h1>{signup ? "Create your account" : "Welcome back"}</h1>
@@ -138,6 +138,6 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
           Prototype · Not connected to a live Upay wallet.
         </p>
       </section>
-    </main>
+    </main><PublicFooter /></>
   );
 }

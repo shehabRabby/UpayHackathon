@@ -17,7 +17,7 @@ describe("Rendered recommendation actions", () => {
     state.status = status;
     const html = renderToStaticMarkup(createElement(Recommendations));
     expect([...html.matchAll(/<button\b[^>]*>([^<]+)<\/button>/g)].map(match => match[1])).toEqual(buttons);
-    expect(html).toContain(`<small>${status}</small>`);
+    expect(html).toContain(`<small class="status-label" data-status="${status}">${status}</small>`);
     expect(html).toContain("Content stays visible.");
   });
 });
