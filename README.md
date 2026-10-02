@@ -188,6 +188,8 @@ On success, USER and ASSISTANT messages and zero to three recommendations are sa
 
 GET `/api/v1/recommendations?status=NEW&priority=HIGH&page=1&pageSize=20` lists the current user's records (maximum page size 100). PATCH an owned ID with `{ "status": "VIEWED" }`, `COMPLETED`, or `DISMISSED`. Clients cannot set NEW, change recommendation text, set priority, or inject another user ID. Recommendations are generated during successful coach turns.
 
+Recommendation transitions: NEW permits VIEWED/COMPLETED/DISMISSED; VIEWED permits COMPLETED/DISMISSED. COMPLETED and DISMISSED are terminal and display no action buttons. A PATCH requesting the already-stored status returns 200 without writing. Other terminal transitions return 400 without changing the record. Updates compare the expected current status atomically within the existing Serializable transaction; a concurrent loser returns a safe 400 conflict and can refresh/retry (an identical winning action then returns the no-op success). Only status is written; content, priority and history are preserved. No database migration or historical status rewrite is required.
+
 ## Phase 6: simulator and purchase affordability
 
 ```http

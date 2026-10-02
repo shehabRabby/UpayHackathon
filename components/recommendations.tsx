@@ -3,6 +3,7 @@ import { useAuth } from "./auth-provider";
 import { useAction, useResource } from "@/lib/frontend/hooks";
 import type { Recommendation } from "@/lib/frontend/types";
 import { Empty, Notice, ResourceState } from "./ui";
+import { recommendationTransitions } from "@/lib/recommendation-status";
 export function Recommendations() {
   const { request } = useAuth();
   const resource = useResource<Recommendation[]>(
@@ -29,8 +30,7 @@ export function Recommendations() {
           </div>
           <p>{item.recommendationText}</p>
           <div className="actions">
-            {(["VIEWED", "COMPLETED", "DISMISSED"] as const)
-              .filter((status) => status !== item.status)
+            {recommendationTransitions[item.status]
               .map((status) => (
                 <button
                   className="secondary"

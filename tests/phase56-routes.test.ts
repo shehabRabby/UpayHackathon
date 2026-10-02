@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
       findMany: vi.fn(),
       count: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       create: vi.fn(),
     },
   },
@@ -328,13 +329,8 @@ describe("Phase 5/6 route guarantees", () => {
       ).status,
     ).toBe(404);
     expect(mocks.db.recommendations.update).not.toHaveBeenCalled();
-    mocks.db.recommendations.findFirst.mockResolvedValue({
-      recommendation_id: id,
-    });
-    mocks.db.recommendations.update.mockResolvedValue({
-      ...rec,
-      status: "VIEWED",
-    });
+    mocks.db.recommendations.findFirst.mockResolvedValue(rec);
+    mocks.db.recommendations.updateMany.mockResolvedValue({ count: 1 });
     expect(
       (
         await patchRecommendation(
@@ -343,9 +339,10 @@ describe("Phase 5/6 route guarantees", () => {
         )
       ).status,
     ).toBe(200);
-    expect(mocks.db.recommendations.update.mock.calls[0][0].where).toEqual({
+    expect(mocks.db.recommendations.updateMany.mock.calls[0][0].where).toEqual({
       recommendation_id: id,
       user_id: userId,
+      status: "NEW",
     });
   });
   it("simulates without writes, even when no goal is selected", async () => {

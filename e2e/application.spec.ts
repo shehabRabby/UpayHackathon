@@ -408,6 +408,39 @@ async function login(page: Page) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
+test("recommendation actions follow terminal-state rules", async ({ page }) => {
+  await fixture(page);
+  const items = ["NEW", "VIEWED", "COMPLETED", "DISMISSED"].map((status, index) => ({
+    recommendationId: `synthetic-${index}`, recommendationType: "BUDGET", priority: "LOW", status,
+    recommendationText: `Synthetic recommendation ${index}`, createdAt: new Date().toISOString(),
+  }));
+  await page.route("**/api/v1/recommendations**", async route => {
+    const request = route.request();
+    if (request.method() === "PATCH") {
+      const item = items.find(value => request.url().endsWith(value.recommendationId))!;
+      item.status = request.postDataJSON().status;
+      return route.fulfill({ json: { success: true, message: "Updated", data: item } });
+    }
+    return route.fulfill({ json: { success: true, message: "OK", data: items } });
+  });
+  await login(page);
+  const article = (index: number) => page.locator("article.recommendation").filter({ hasText: `Synthetic recommendation ${index}` });
+  for (const [index, count] of [[0, 3], [1, 2], [2, 0], [3, 0]]) {
+    await expect(article(index)).toBeVisible();
+    await expect(article(index).getByRole("button")).toHaveCount(count);
+    await expect(article(index)).toContainText(items[index].status);
+  }
+  await expect(article(1).getByRole("button", { name: "Mark read" })).toHaveCount(0);
+  await article(0).getByRole("button", { name: "Mark read" }).click();
+  await expect(article(0)).toContainText("VIEWED");
+  await expect(article(0).getByRole("button")).toHaveCount(2);
+  await article(0).getByRole("button", { name: "Complete", exact: true }).click();
+  await expect(article(0)).toContainText("COMPLETED");
+  await expect(article(0).getByRole("button")).toHaveCount(0);
+  await article(1).getByRole("button", { name: "Dismiss", exact: true }).click();
+  await expect(article(1)).toContainText("DISMISSED");
+  await expect(article(1).getByRole("button")).toHaveCount(0);
+});
 test("coach retry keeps its request ID after an uncertain send and reload", async ({ page }) => {
   await fixture(page); await login(page);
   await page.getByRole("link", { name: "AI Coach", exact: true }).click();
