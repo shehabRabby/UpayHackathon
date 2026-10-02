@@ -16,6 +16,8 @@
     "verify:auth": "node --import tsx scripts/verify-auth.ts",
     "verify:startup": "node scripts/verify-startup.mjs",
     "verify:gemini": "node --conditions=react-server --import tsx scripts/verify-gemini.ts",
+    "verify:coach-languages": "node --conditions=react-server --import tsx scripts/verify-coach-languages.ts",
+    "verify:coach-unicode": "node --import tsx scripts/verify-coach-unicode.ts",
     "diagnose:gemini": "node --conditions=react-server --import tsx scripts/diagnose-gemini.ts",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",

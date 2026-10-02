@@ -21,6 +21,39 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Server-side Gemini", () => {
+  it.each([
+    ["en", "Review your spending", "English"],
+    ["bn", "আপনার খরচ পর্যালোচনা করুন।", "Bangla using Bengali script"],
+    ["banglish", "Apnar khoroch porjalochona korun.", "Banglish (Bangla transliterated into Latin script)"],
+  ] as const)("preserves %s text and recommendations through JSON validation", async (language, message, instruction) => {
+    const answer = { message, recommendations: [{ recommendationType: "BUDGET", recommendationText: message, priority: "LOW" }] };
+    mocks.generateContent.mockResolvedValue({ text: JSON.stringify(answer) });
+    expect(await generateCoaching({ message, language, context: {} })).toEqual(answer);
+    expect(mocks.generateContent.mock.calls[0][0].config.systemInstruction).toContain(instruction);
+  });
+  it.each([500, 502, 503])("classifies upstream %s without leaking response data", async status => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.generateContent.mockRejectedValue({ status, message: "private prompt and credential" });
+    await expect(generateCoaching({ message: "Private", language: "bn", context: {} })).rejects.toMatchObject({ message: "AI service is temporarily busy or unavailable; please try again later" });
+    expect(log).toHaveBeenCalledWith("Coach diagnostic", expect.objectContaining({ status, category: "upstream_5xx" }));
+    expect(JSON.stringify(log.mock.calls)).not.toContain("private prompt");
+    log.mockRestore();
+  });
+  it("classifies local timeout", async () => {
+    mocks.generateContent.mockRejectedValue(new DOMException("private detail", "TimeoutError"));
+    await expect(generateCoaching({ message: "Help", language: "banglish", context: {} })).rejects.toMatchObject({ message: "Gemini request timed out; please try again later" });
+  });
+  it.each([["bad JSON", "json_parse"], [JSON.stringify({ message: "", recommendations: [] }), "structured_schema"], [JSON.stringify({ message: "বাংলা", recommendations: [{ priority: "INVALID" }] }), "recommendation_schema"]])("distinguishes output failure %s", async (text, category) => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.generateContent.mockResolvedValue({ text });
+    await expect(generateCoaching({ message: "Help", language: "bn", context: {} })).rejects.toMatchObject({ status: 500 });
+    expect(log).toHaveBeenCalledWith("Coach diagnostic", expect.objectContaining({ category }));
+    log.mockRestore();
+  });
+  it("rejects unsupported language before transport", async () => {
+    await expect(generateCoaching({ message: "Help", language: "fr" as "en", context: {} })).rejects.toMatchObject({ status: 400 });
+    expect(mocks.generateContent).not.toHaveBeenCalled();
+  });
   it("uses project-bound authorization keys without switching to Vertex or OAuth", async () => {
     vi.stubEnv("GEMINI_API_KEY", " AQ.Ab.synthetic-test-credential ");
     vi.stubEnv("GOOGLE_GENAI_USE_VERTEXAI", "true");

@@ -3,6 +3,9 @@ import { createGeminiClient } from "./gemini-client";
 export { assertGeminiConfigured } from "./gemini-client";
 import { ApiError } from "./api";
 import { coachResponse } from "./phase56-validation";
+import { language as languageSchema } from "./phase56-validation";
+import { coachDiagnostic, providerFailure } from "./coach-diagnostics";
+import type { Fetch } from "@google/genai";
 
 export type CoachLanguage = "bn" | "banglish" | "en";
 export type CoachHistory = { role: "USER" | "ASSISTANT"; content: string }[];
@@ -12,8 +15,25 @@ export async function generateCoaching(input: {
   language: CoachLanguage;
   context: unknown;
   history?: CoachHistory;
-}) {
-  const { ai, model, abortSignal } = createGeminiClient();
+}, transport?: Fetch) {
+  if (!languageSchema.safeParse(input.language).success) {
+    coachDiagnostic("validation", { category: "unsupported_language" });
+    throw new ApiError(400, "Unsupported coach language");
+  }
+  const started = Date.now();
+  let lastHttpStatus: number | undefined;
+  const { ai, model, abortSignal } = createGeminiClient(async (url, init) => {
+    lastHttpStatus = undefined;
+    let response: Response;
+    try { response = await (transport ?? fetch)(url, init); }
+    catch (error) {
+      coachDiagnostic("transport", { ...providerFailure(error, Boolean(init?.signal?.aborted)), language: input.language, elapsedMs: Date.now() - started });
+      throw error;
+    }
+    lastHttpStatus = response.status;
+    coachDiagnostic("provider_http", { status: response.status, language: input.language, elapsedMs: Date.now() - started });
+    return response;
+  });
   let text: string | undefined;
   try {
     const response = await ai.models.generateContent({
@@ -76,10 +96,13 @@ Return a JSON object with message and recommendations. Include zero to three bri
     text = response.text;
   } catch (error) {
     // Do not leak provider responses, prompts, keys, or financial data in logs.
-    const status =
-      typeof error === "object" && error !== null && "status" in error
-        ? error.status
-        : undefined;
+    const diagnostic = providerFailure(error, abortSignal.aborted);
+    if (diagnostic.status === undefined && lastHttpStatus && lastHttpStatus >= 400) {
+      diagnostic.status = lastHttpStatus;
+      diagnostic.category = lastHttpStatus === 429 ? "rate_limit" : lastHttpStatus >= 500 ? "upstream_5xx" : "provider_http";
+    }
+    coachDiagnostic("generation", { ...diagnostic, language: input.language, elapsedMs: Date.now() - started });
+    const status = diagnostic.status;
     if (
       error instanceof Error &&
       /API[_ ]KEY[_ ]INVALID|API key not valid/i.test(error.message)
@@ -109,6 +132,8 @@ Return a JSON object with message and recommendations. Include zero to three bri
         500,
         "Gemini quota or rate limit reached; please try again later",
       );
+    if (status === 503 || status === 502 || status === 500)
+      throw new ApiError(500, "AI service is temporarily busy or unavailable; please try again later");
     if (
       status === 408 ||
       status === 504 ||
@@ -126,14 +151,18 @@ Return a JSON object with message and recommendations. Include zero to three bri
       "AI service is unavailable; please try again later",
     );
   }
-  try {
-    const parsed = coachResponse.safeParse(JSON.parse(text ?? ""));
-    if (!parsed.success) throw new Error("Invalid provider response");
-    return parsed.data;
-  } catch {
+  let json: unknown;
+  try { json = JSON.parse(text ?? ""); } catch {
+    coachDiagnostic("response", { category: text ? "json_parse" : "missing_text", language: input.language });
     throw new ApiError(
       500,
       "AI service returned an invalid response; please try again",
     );
   }
+  const parsed = coachResponse.safeParse(json);
+  if (!parsed.success) {
+    coachDiagnostic("response", { category: parsed.error.issues.some(issue => issue.path[0] === "recommendations") ? "recommendation_schema" : "structured_schema", language: input.language });
+    throw new ApiError(500, "AI service returned an invalid response; please try again");
+  }
+  return parsed.data;
 }

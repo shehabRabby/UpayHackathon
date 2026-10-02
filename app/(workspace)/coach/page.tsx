@@ -1,21 +1,37 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useAction, useResource } from "@/lib/frontend/hooks";
 import type { CoachAnswer, Conversation, Goal, Message } from "@/lib/frontend/types";
 import { Empty, Field, Notice, PageTitle, Pagination, ResourceState, date } from "@/components/ui";
 import { Recommendations } from "@/components/recommendations";
 export default function CoachPage() {
-  const { request } = useAuth(), action = useAction();
+  const { request, session } = useAuth(), action = useAction();
   const [selected, setSelected] = useState<string | null>(null), [page, setPage] = useState(1), [conversationPage, setConversationPage] = useState(1);
   const [draft, setDraft] = useState(""), [recommendationVersion, setRecommendationVersion] = useState(0);
+  const pendingTurn = useRef<{ payload: string; requestId: string } | null>(null);
   const conversations = useResource<Conversation[]>(`/coach/conversations?page=${conversationPage}&pageSize=20`);
   const goals = useResource<Goal[]>("/goals?page=1&pageSize=100");
   const messages = useResource<Message[]>(selected ? `/coach/conversations/${selected}/messages?page=${page}&pageSize=20` : null);
-  function send(event: FormEvent<HTMLFormElement>) {
+  async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!selected) return; const fields = new FormData(event.currentTarget);
+    const body = { message: draft.trim(), language: fields.get("language"), ...(fields.get("goalId") ? { goalId: fields.get("goalId") } : {}) };
+    const payload = JSON.stringify([selected, body]);
+    const storageKey = `upay-coach-retry:${session?.user.id}:${selected}`;
     void action.run(async () => {
-      await request<CoachAnswer>(`/coach/conversations/${selected}/messages`, { method: "POST", timeoutMs: 70_000, body: { message: draft.trim(), language: fields.get("language"), ...(fields.get("goalId") ? { goalId: fields.get("goalId") } : {}) } });
+    // Persist only a fingerprint and retry UUID, never the message or metrics.
+    const fingerprint = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload))), value => value.toString(16).padStart(2, "0")).join("");
+    if (pendingTurn.current?.payload !== payload) {
+      let saved: { fingerprint?: string; requestId?: string } | null = null;
+      try { saved = JSON.parse(sessionStorage.getItem(storageKey) ?? "null"); } catch { /* unavailable storage: retain in memory */ }
+      const requestId = saved?.fingerprint === fingerprint && /^[0-9a-f-]{36}$/i.test(saved.requestId ?? "") ? saved!.requestId! : crypto.randomUUID();
+      pendingTurn.current = { payload, requestId };
+    }
+    const requestId = pendingTurn.current.requestId;
+    try { sessionStorage.setItem(storageKey, JSON.stringify({ fingerprint, requestId })); } catch { /* in-memory retry remains available */ }
+      await request<CoachAnswer>(`/coach/conversations/${selected}/messages`, { method: "POST", timeoutMs: 70_000, body: { ...body, requestId } });
+      pendingTurn.current = null;
+      try { sessionStorage.removeItem(storageKey); } catch { /* storage may be disabled */ }
       setDraft(""); setPage(Math.max(1, Math.ceil(((messages.meta?.total ?? 0) + 2) / 20))); messages.reload(); conversations.reload(); setRecommendationVersion(value => value + 1);
     }, "Your coach replied.");
   }

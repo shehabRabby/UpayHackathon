@@ -10,6 +10,7 @@ export const messageInput = z.strictObject({
   message: z.string().trim().min(1).max(2000),
   language: language.optional(),
   goalId: z.uuid().optional(),
+  requestId: z.uuid().optional(),
 });
 export const recommendationQuery = pagination
   .extend({

@@ -408,6 +408,32 @@ async function login(page: Page) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
+test("coach retry keeps its request ID after an uncertain send and reload", async ({ page }) => {
+  await fixture(page); await login(page);
+  await page.getByRole("link", { name: "AI Coach", exact: true }).click();
+  await page.getByLabel("Conversation title").fill("Retry test");
+  await page.getByRole("button", { name: "New conversation", exact: true }).click();
+  const keys: string[] = [];
+  await page.route("**/api/v1/coach/conversations/*/messages", async route => {
+    if (route.request().method() !== "POST") return route.fallback();
+    keys.push(route.request().postDataJSON().requestId);
+    if (keys.length === 1) return route.abort("failed");
+    return route.fallback();
+  });
+  await page.getByLabel("Coach language").selectOption("bn");
+  await page.getByLabel("Your message").fill("আমার সঞ্চয় নিয়ে পরামর্শ দিন।");
+  await page.getByRole("button", { name: "Send to coach", exact: true }).click();
+  await expect(page.locator("main").getByRole("alert")).toContainText("Cannot connect");
+  await page.reload();
+  await page.getByRole("button", { name: /Retry test/ }).click();
+  await page.getByLabel("Coach language").selectOption("bn");
+  await page.getByLabel("Your message").fill("আমার সঞ্চয় নিয়ে পরামর্শ দিন।");
+  await page.getByRole("button", { name: "Send to coach", exact: true }).click();
+  await expect(page.getByText("Your coach replied.", { exact: true })).toBeVisible();
+  expect(keys).toHaveLength(2);
+  expect(keys[1]).toBe(keys[0]);
+  expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/i);
+});
 test("empty records and recoverable backend errors", async ({ page }) => {
   const state = await fixture(page);
   await login(page);

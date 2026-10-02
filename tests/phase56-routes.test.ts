@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api";
+import { turnIds } from "@/lib/coach-retry";
 const mocks = vi.hoisted(() => ({
   user: vi.fn(),
   ai: vi.fn(),
@@ -95,6 +96,65 @@ beforeEach(() => {
 });
 
 describe("Phase 5/6 route guarantees", () => {
+  it.each(["en", "bn", "banglish"] as const)("persists %s Unicode text without changing it", async language => {
+    const text = language === "bn" ? "আপনার সঞ্চয় লক্ষ্য পর্যালোচনা করুন।" : language === "banglish" ? "Apnar sonchoy lokkho porjalochona korun." : "Review your savings goal.";
+    mocks.ai.mockResolvedValue({ message: text, recommendations: [{ recommendationType: "GOAL", recommendationText: text, priority: "LOW" }] });
+    mocks.db.recommendations.create.mockResolvedValue({ ...rec, recommendation_text: text });
+    const response = await chat(request("chat", { message: text, language }), context());
+    expect(response.status).toBe(201);
+    expect((await response.json()).data.assistantMessage.message).toBe(text);
+    expect(mocks.db.ai_messages.create.mock.calls[1][0].data.message_content).toBe(text);
+    expect(mocks.db.recommendations.create.mock.calls[0][0].data.recommendation_text).toBe(text);
+  });
+  it("replays a committed retry without another provider call or writes", async () => {
+    const input = { requestId: id, message: "বাংলা", language: "bn" };
+    const ids = turnIds(userId, id, input)!;
+    mocks.db.ai_messages.findMany.mockResolvedValue([
+      { message_id: ids.user, conversation_id: id, role: "USER", message_content: input.message, created_at: date },
+      { message_id: ids.assistant, conversation_id: id, role: "ASSISTANT", message_content: "পরামর্শ", created_at: date },
+    ]);
+    mocks.db.recommendations.findMany.mockResolvedValue([rec]);
+    const response = await chat(request("chat", input), context());
+    expect(response.status).toBe(200);
+    expect((await response.json()).data.assistantMessage.message).toBe("পরামর্শ");
+    expect(mocks.ai).not.toHaveBeenCalled();
+    expect(mocks.db.ai_messages.create).not.toHaveBeenCalled();
+    expect(mocks.db.recommendations.create).not.toHaveBeenCalled();
+    expect(mocks.db.ai_messages.findMany.mock.calls[0][0].where.conversation.user_id).toBe(userId);
+  });
+  it("rejects retry-key reuse with a changed language or payload", async () => {
+    const ids = turnIds(userId, id, { requestId: id, message: "Hi", language: "en" })!;
+    mocks.db.ai_messages.findMany.mockResolvedValue([{ message_id: ids.user, conversation_id: id, role: "USER", message_content: "Hi", created_at: date }]);
+    expect((await chat(request("chat", { requestId: id, message: "Hi", language: "bn" }), context())).status).toBe(400);
+    expect(mocks.ai).not.toHaveBeenCalled();
+  });
+  it("rolls back messages when recommendation persistence fails, then safely retries", async () => {
+    const rows: unknown[] = [];
+    mocks.db.ai_messages.create.mockImplementation(async ({ data }) => { const row = { message_id: id, ...data }; rows.push(row); return row; });
+    mocks.db.$transaction.mockImplementation(async operation => {
+      const length = rows.length;
+      try { return await operation(mocks.db); } catch (error) { rows.splice(length); throw error; }
+    });
+    mocks.ai.mockResolvedValue({ message: "পরামর্শ", recommendations: [{ recommendationType: "BUDGET", recommendationText: "খরচ দেখুন", priority: "LOW" }] });
+    mocks.db.recommendations.create.mockRejectedValueOnce(new Error("private database detail")).mockResolvedValue(rec);
+    const input = { message: "Help", language: "bn", requestId: id };
+    expect((await chat(request("chat", input), context())).status).toBe(500);
+    expect(rows).toHaveLength(0);
+    expect((await chat(request("chat", input), context())).status).toBe(201);
+    expect(rows).toHaveLength(2);
+  });
+  it("returns the winner of a concurrent retry after the losing transaction rolls back", async () => {
+    const input = { requestId: id, message: "Hi", language: "en" };
+    const ids = turnIds(userId, id, input)!;
+    mocks.db.ai_messages.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([
+      { message_id: ids.user, conversation_id: id, role: "USER", message_content: "Hi", created_at: date },
+      { message_id: ids.assistant, conversation_id: id, role: "ASSISTANT", message_content: "Guidance", created_at: date },
+    ]);
+    mocks.db.recommendations.findMany.mockResolvedValue([]);
+    mocks.db.ai_conversations.updateMany.mockResolvedValue({ count: 0 });
+    expect((await chat(request("chat", input), context())).status).toBe(200);
+    expect(mocks.db.ai_messages.create).not.toHaveBeenCalled();
+  });
   it.each([
     [
       "chat",

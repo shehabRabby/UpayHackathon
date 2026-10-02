@@ -7,6 +7,8 @@ import { messageInput } from "@/lib/phase56-validation";
 import { minimizedContext } from "@/lib/coach-context";
 import { generateCoaching, type CoachHistory } from "@/lib/gemini";
 import { messageData, recommendationData } from "@/lib/coach-data";
+import { replayTurn, turnIds } from "@/lib/coach-retry";
+import { coachDiagnostic } from "@/lib/coach-diagnostics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +30,12 @@ export const GET = handle(async (request: Request, context: IdContext) => {
 export const POST = handle(async (request: Request, context: IdContext) => {
   const userId = await requireUser(request), id = await resourceId(context);
   const input = await body(request, messageInput);
+  const ids = turnIds(userId, id, input);
+  let stage = "retry_lookup";
+  try {
+  const replay = await replayTurn(prisma, userId, id, ids);
+  if (replay) return success(replay, "Coach response retrieved", 200);
+  stage = "context_database";
   const prepared = await prisma.$transaction(async tx => {
     const conversation = await tx.ai_conversations.findFirst({ where: { conversation_id: id, user_id: userId } });
     if (!conversation) throw new ApiError(404, "Conversation not found");
@@ -39,22 +47,40 @@ export const POST = handle(async (request: Request, context: IdContext) => {
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   // Keep the paid network call outside database transactions. Failed calls
   // produce no orphan messages, recommendations, or altered conversation state.
+  stage = "generation";
   const answer = await generateCoaching({ message: input.message, language: input.language ?? prepared.preferredLanguage,
     context: prepared.context, history: prepared.history });
   const stored = await prisma.$transaction(async tx => {
+    stage = "conversation_persistence";
     const timestamp = new Date(Math.max(Date.now(), prepared.conversation.updated_at.getTime() + 1));
     const guard = await tx.ai_conversations.updateMany({ where: { conversation_id: id, user_id: userId,
       updated_at: prepared.conversation.updated_at }, data: { updated_at: new Date(timestamp.getTime() + 1) } });
     if (!guard.count) throw new ApiError(400, "Conversation changed while the response was generated; reload before sending another message");
-    const userMessage = await tx.ai_messages.create({ data: { conversation_id: id, role: "USER", message_content: input.message, created_at: timestamp } });
-    const assistantMessage = await tx.ai_messages.create({ data: { conversation_id: id, role: "ASSISTANT", message_content: answer.message,
+    const userMessage = await tx.ai_messages.create({ data: { ...(ids ? { message_id: ids.user } : {}), conversation_id: id, role: "USER", message_content: input.message, created_at: timestamp } });
+    const assistantMessage = await tx.ai_messages.create({ data: { ...(ids ? { message_id: ids.assistant } : {}), conversation_id: id, role: "ASSISTANT", message_content: answer.message,
       created_at: new Date(timestamp.getTime() + 1) } });
     const recommendations = [];
+    stage = "recommendation_persistence";
     for (const item of answer.recommendations) recommendations.push(await tx.recommendations.create({ data: {
+      ...(ids ? { recommendation_id: ids.recommendations[recommendations.length] } : {}),
       user_id: userId, recommendation_type: item.recommendationType, recommendation_text: item.recommendationText, priority: item.priority, status: "NEW",
     } }));
     return { userMessage, assistantMessage, recommendations };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   return success({ conversationId: id, userMessage: messageData(stored.userMessage), assistantMessage: messageData(stored.assistantMessage),
     recommendations: stored.recommendations.map(recommendationData) }, "Coach response created", 201);
+  } catch (error) {
+    // A concurrent retry may have committed while this request generated.
+    // Recheck after transaction rollback using a fresh database snapshot.
+    if (ids && ["conversation_persistence", "recommendation_persistence"].includes(stage)) {
+      try {
+        const committed = await replayTurn(prisma, userId, id, ids);
+        if (committed) return success(committed, "Coach response retrieved", 200);
+      } catch {
+        coachDiagnostic("retry_lookup", { category: "replay_unavailable" });
+      }
+    }
+    coachDiagnostic(stage, { category: error instanceof ApiError ? "request_rejected" : stage === "generation" ? "generation_failed" : "database_failure" });
+    throw error;
+  }
 });
