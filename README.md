@@ -1,5 +1,7 @@
 # Upay Financial Coach
 
+Production environment, callback URLs and release checks: [DEPLOYMENT.md](DEPLOYMENT.md). These instructions do not deploy or change the existing database.
+
 The application now includes signup/login, persistent sessions, protected dashboard, transactions, savings goals/contributions/pause/resume, analytics, AI coaching/recommendations, simulator/affordability, and profile pages. See [RECOVERY_REPORT.md](RECOVERY_REPORT.md) for recovery findings, verification limits, and the manual end-to-end checklist.
 
 For this already configured workspace, start with `npm.cmd run dev` and open `http://127.0.0.1:3000`. Do not repeat database setup or seed commands to start the existing database. For production, run `npm.cmd run build`, then `npm.cmd run start`.

@@ -29,9 +29,19 @@ const child = spawn(
     windowsHide: true,
   },
 );
-// Do not relay arbitrary application error output; it may include credentials.
-child.stdout.resume();
-child.stderr.resume();
+// Inspect runtime failures without relaying application output or user data.
+const runtimeFindings = new Set();
+for (const stream of [child.stdout, child.stderr]) {
+  stream.on("data", chunk => {
+    const text = chunk.toString();
+    for (const [label, pattern] of [
+      ["unhandled exception", /unhandledRejection|uncaughtException/i],
+      ["missing module", /Cannot find module|Module not found/i],
+      ["React runtime warning", /hydration|Invalid hook call|Each child.*key/i],
+      ["component boundary failure", /cannot be imported from a Client Component|server-only.*Client Component/i],
+    ]) if (pattern.test(text)) runtimeFindings.add(label);
+  });
+}
 let exitCode;
 child.on("exit", (code) => {
   exitCode = code;
@@ -52,6 +62,21 @@ try {
   }
   assert.ok(ready, "Production server did not become ready");
   console.log("Production startup and home page verified: HTTP 200");
+  for (const path of ["/login", "/signup", "/dashboard", "/transactions", "/goals", "/analytics", "/coach", "/planning", "/profile"]) {
+    const response = await fetch(base + path, { signal: AbortSignal.timeout(10_000) });
+    assert.equal(response.status, 200, `Production page ${path}`);
+    assert.ok((await response.text()).includes("Upay Financial Coach"), `Production HTML ${path}`);
+  }
+  const callback = await fetch(`${base}/auth/callback`, { redirect: "manual", signal: AbortSignal.timeout(10_000) });
+  assert.equal(callback.status, 307);
+  const callbackTarget = new URL(callback.headers.get("location"));
+  // Next normalizes the local request origin to localhost on this server.
+  assert.ok(["127.0.0.1", "localhost"].includes(callbackTarget.hostname));
+  assert.equal(callbackTarget.protocol, "http:");
+  assert.equal(callbackTarget.port, String(port));
+  assert.equal(callbackTarget.pathname, "/login");
+  assert.equal(callbackTarget.search, "?confirmation=failed");
+  console.log("Production public/protected page shells and safe callback redirect verified");
   await new Promise((resolve, reject) => {
     const smoke = spawn(process.execPath, ["scripts/smoke.mjs", base], {
       cwd: root,
@@ -70,6 +95,8 @@ try {
   assert.equal(invalid.status, 401);
   assert.equal((await invalid.json()).success, false);
   console.log("Live API rejects invalid bearer tokens with a 401 envelope");
+  assert.deepEqual([...runtimeFindings], [], "Production runtime diagnostics failed");
+  console.log("Production logs: no detected unhandled, import, component-boundary or React failures");
 } finally {
   if (child.pid && exitCode === undefined) {
     if (process.platform === "win32")

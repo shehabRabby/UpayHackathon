@@ -103,32 +103,32 @@ for (const path of sources) {
     ...text.matchAll(/(?:from\s+|import\s*\(\s*|import\s+)["']([^"']+)["']/g),
   ].map((match) => match[1]);
   const localEdges: string[] = [];
-  for (const module of modules) {
-    if (module.startsWith("node:")) continue;
+  for (const specifier of modules) {
+    if (specifier.startsWith("node:")) continue;
     // TypeScript does not resolve stylesheet imports. Verify the actual asset.
-    if (module.startsWith(".") && module.endsWith(".css")) {
-      const asset = resolve(path, "..", module);
+    if (specifier.startsWith(".") && specifier.endsWith(".css")) {
+      const asset = resolve(path, "..", specifier);
       if (!existsSync(asset))
-        imports.push({ file: relative(root, path), module });
+        imports.push({ file: relative(root, path), module: specifier });
       else if (!exactCase(asset)) casing.push(relative(root, path));
       continue;
     }
     const resolution = ts.resolveModuleName(
-      module,
+      specifier,
       path,
       parsed.options,
       ts.sys,
     ).resolvedModule;
-    if (!resolution) imports.push({ file: relative(root, path), module });
+    if (!resolution) imports.push({ file: relative(root, path), module: specifier });
     else if (!resolution.isExternalLibraryImport) {
       localEdges.push(resolve(resolution.resolvedFileName));
       if (!exactCase(resolution.resolvedFileName))
         casing.push(relative(root, path));
     }
-    if (!module.startsWith(".") && !module.startsWith("@/")) {
-      const name = module.startsWith("@")
-        ? module.split("/").slice(0, 2).join("/")
-        : module.split("/")[0];
+    if (!specifier.startsWith(".") && !specifier.startsWith("@/")) {
+      const name = specifier.startsWith("@")
+        ? specifier.split("/").slice(0, 2).join("/")
+        : specifier.split("/")[0];
       if (!declared.has(name))
         imports.push({
           file: relative(root, path),

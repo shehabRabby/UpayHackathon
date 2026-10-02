@@ -16,7 +16,7 @@ export default function GoalsPage() {
     void action.run(async () => { await request("/goals", { method: "POST", body: { goalName: String(fields.get("goalName")).trim(), targetAmount: numeric(fields, "targetAmount"), currentAmount: numeric(fields, "currentAmount"), targetDate: String(fields.get("targetDate")) } }); setVersion(value => value + 1); goals.reload(); }, "Your savings goal is ready.");
   }
   return <><PageTitle title="Savings goals" description="Give your savings a purpose, then build it one contribution at a time." /><div className="grid two">
-    <section className="card"><h2>Create savings goal</h2><Notice error={action.error} success={action.success} /><form key={version} onSubmit={submit}><fieldset disabled={action.busy}>
+    <section className="card"><h2>Create savings goal</h2><Notice error={action.error} success={action.success} /><form onChange={action.clear} onInvalidCapture={action.clear} key={version} onSubmit={submit}><fieldset disabled={action.busy}>
       <Field label="Goal name"><input name="goalName" required maxLength={200} placeholder="Emergency fund" /></Field><Field label="Target amount (BDT)"><AmountInput name="targetAmount" /></Field>
       <Field label="Already saved (BDT)"><AmountInput name="currentAmount" value={0} positive={false} /></Field><Field label="Target date"><input name="targetDate" type="date" required min={minDate} /></Field>
       <p className="muted">The target date must be in the future. Already saved cannot exceed the target.</p><button type="submit">{action.busy ? "Creating…" : "Create goal"}</button></fieldset></form></section>

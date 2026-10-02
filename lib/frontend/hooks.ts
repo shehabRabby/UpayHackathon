@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { ClientError } from "./api-client";
 import type { Meta } from "./types";
@@ -49,17 +49,21 @@ export function useAction() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [success, setSuccess] = useState("");
+  const revision = useRef(0);
+  const clear = useCallback(() => { revision.current++; setError(""); setSuccess(""); }, []);
   const run = async (
     task: () => Promise<void>,
     message = "Saved successfully.",
   ) => {
+    const started = ++revision.current;
     setBusy(true);
     setError("");
     setSuccess("");
     try {
       await task();
-      setSuccess(message);
+      if (revision.current === started) setSuccess(message);
     } catch (failure) {
+      if (revision.current !== started) return;
       const details =
         failure instanceof ClientError
           ? failure.issues.map((item) => item.message).join(" ")
@@ -74,5 +78,5 @@ export function useAction() {
       setBusy(false);
     }
   };
-  return { busy, error, success, run };
+  return { busy, error, success, run, clear };
 }

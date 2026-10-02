@@ -19,6 +19,7 @@ import type {
   Message,
   Conversation,
   Recommendation,
+  Spending,
 } from "../lib/frontend/types";
 
 // All Auth/API calls are intercepted in this suite. No real Supabase users,
@@ -30,7 +31,7 @@ const incomeId = "00000000-0000-4000-8000-000000000004";
 const expenseId = "00000000-0000-4000-8000-000000000005";
 const conversationId = "00000000-0000-4000-8000-000000000006";
 const recommendationId = "00000000-0000-4000-8000-000000000007";
-async function fixture(page: Page) {
+async function fixture(page: Page, longContent = false) {
   let profile: Profile | null = null;
   let transactions: Transaction[] = [],
     goals: Goal[] = [],
@@ -55,7 +56,7 @@ async function fixture(page: Page) {
     assessmentDate: "2026-10-02",
     limitations: ["Illustrative wellness fixture"],
   };
-  const spending = {
+  const spending: Spending = {
     period: {
       startDate: "2026-07-05",
       endDate: "2026-10-02",
@@ -96,6 +97,18 @@ async function fixture(page: Page) {
     },
   ];
   const now = () => new Date().toISOString();
+  if (longContent) {
+    profile = { userId, fullName: "Member".repeat(33), email: `${"member".repeat(30)}@example.test`, phone: null, preferredLanguage: "en" };
+    goals = [{ goalId, goalName: "LongGoal".repeat(25), targetAmount: 1e12, currentAmount: 1e11, remainingAmount: 9e11, targetDate: "2099-01-01", requiredMonthlySaving: 1e9, status: "ACTIVE", progressPercentage: 10, isOverdue: false, createdAt: now(), updatedAt: now() }];
+    transactions = [{ transactionId, categoryId: incomeId, transactionType: "CASH_IN", amount: 1e12, merchantName: "Merchant".repeat(25), description: "Note".repeat(500), transactionDate: now(), source: "manual", createdAt: now() }];
+    conversations = [{ conversationId, title: "Conversation".repeat(16), createdAt: now(), updatedAt: now() }];
+    const texts = ["Recorded finances BDT 30,000 by 2026-12-31. ".repeat(50), "আপনার সঞ্চয়ের পরিকল্পনা recorded BDT 30,000। ".repeat(50), "Apnar savings plan e BDT 30,000 save korte hobe. ".repeat(50)];
+    messages = texts.map((message, index) => ({ messageId: `fixture-${index}`, conversationId, role: "ASSISTANT", message, createdAt: now() }));
+    recommendations = [{ recommendationId, recommendationType: "BUDGET", recommendationText: texts.join(" "), priority: "HIGH", status: "VIEWED", createdAt: now() }];
+    contributions.push({ contributionId: "fixture-contribution", goalId, transactionId: null, amount: 1e11, contributionDate: now() });
+    spending.transactionCount = 1;
+    spending.categorySpending = [{ categoryId: expenseId, categoryName: "Category".repeat(25), totalSpent: 1e12, transactionCount: 1, percentage: 100 }];
+  }
   const user = {
     id: userId,
     aud: "authenticated",
@@ -397,7 +410,143 @@ async function fixture(page: Page) {
   });
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.name));
+  page.on("console", message => { if (/hydration|each child.*key|cannot update a component|invalid hook/i.test(message.text())) errors.push("React runtime warning"); });
   return { errors };
+}
+
+test("create failure preserves input, retry resets it, edits preserve saved values", async ({ page }) => {
+  await fixture(page); await login(page); await page.goto("/transactions");
+  await page.getByLabel("Category", { exact: true }).selectOption(incomeId);
+  await page.getByLabel("Amount (BDT)", { exact: true }).fill("123.45");
+  await page.getByLabel("Note (optional)").fill("Preserve this note");
+  await page.route("**/api/v1/transactions", async route => {
+    if (route.request().method() !== "POST") return route.fallback();
+    return route.fulfill({ status: 400, json: { success: false, message: "Synthetic validation failure", data: null } });
+  });
+  await page.getByRole("button", { name: "Add transaction", exact: true }).click();
+  await expect(page.locator("main").getByRole("alert")).toContainText("Synthetic validation failure");
+  await expect(page.getByLabel("Amount (BDT)", { exact: true })).toHaveValue("123.45");
+  await expect(page.getByLabel("Note (optional)")).toHaveValue("Preserve this note");
+  await page.unroute("**/api/v1/transactions");
+  await page.getByRole("button", { name: "Add transaction", exact: true }).click();
+  await expect(page.getByText("Transaction recorded.", { exact: true })).toBeVisible();
+  await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
+  await expect(page.getByLabel("Amount (BDT)", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Note (optional)")).toHaveValue("");
+  await expect(page.getByLabel("Date", { exact: true })).not.toHaveValue("");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByLabel("Note (optional)").fill("  Persisted note  ");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Transaction updated.", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Note (optional)")).toHaveValue("Persisted note");
+  await page.getByLabel("Amount (BDT)", { exact: true }).fill("0");
+  await expect(page.getByText("Transaction updated.", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByLabel("Amount (BDT)", { exact: true })).toHaveValue("0");
+  expect(await page.getByLabel("Amount (BDT)", { exact: true }).evaluate((input: HTMLInputElement) => input.validity.valid)).toBe(false);
+});
+
+test("calculator edits and invalid inputs clear stale results without erasing scenarios", async ({ page }) => {
+  await fixture(page); await login(page); await page.goto("/planning");
+  await page.getByLabel("Monthly income (BDT)").fill("50000");
+  await page.getByLabel("Monthly expenses (BDT)").fill("5000");
+  await page.getByLabel("Requested monthly saving (BDT)").fill("10000");
+  await page.getByRole("button", { name: "Run simulation" }).click();
+  await expect(page.getByRole("region", { name: "Simulation result" })).toBeVisible();
+  await expect(page.getByLabel("Monthly income (BDT)")).toHaveValue("50000");
+  await page.getByLabel("Monthly income (BDT)").fill("-50000");
+  await expect(page.getByRole("region", { name: "Simulation result" })).toHaveCount(0);
+  await expect(page.getByText("Your scenario is calculated. No records were changed.", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Run simulation" }).click();
+  await expect(page.getByRole("region", { name: "Simulation result" })).toHaveCount(0);
+  await page.getByLabel("Monthly income (BDT)").fill("50000");
+  await page.getByRole("button", { name: "Run simulation" }).click();
+  await expect(page.getByRole("region", { name: "Simulation result" })).toBeVisible();
+  await page.getByLabel("Horizon (months)").fill("0");
+  await expect(page.getByRole("region", { name: "Simulation result" })).toHaveCount(0);
+  await page.getByLabel("Purchase amount (BDT)").fill("100");
+  await page.getByRole("button", { name: "Check affordability" }).click();
+  await expect(page.getByRole("region", { name: "Affordability result" })).toBeVisible();
+  await page.getByLabel("Emergency buffer (months)").fill("13");
+  await expect(page.getByRole("region", { name: "Affordability result" })).toHaveCount(0);
+  await expect(page.getByText("Your purchase assessment is ready.", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Check affordability" }).click();
+  await expect(page.getByRole("region", { name: "Affordability result" })).toHaveCount(0);
+});
+
+test("switching conversations clears another conversation's draft and error", async ({ page }) => {
+  await fixture(page);
+  const secondId = "00000000-0000-4000-8000-000000000008";
+  await page.route("**/api/v1/coach/conversations?**", route => route.fulfill({ json: { success: true, message: "OK", data: [
+    { conversationId, title: "First fixture conversation", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { conversationId: secondId, title: "Second fixture conversation", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  ] } }));
+  await page.route("**/api/v1/coach/conversations/*/messages", route => {
+    if (route.request().method() !== "POST") return route.fallback();
+    return route.fulfill({ status: 500, json: { success: false, message: "Synthetic coach failure", data: null } });
+  });
+  await login(page); await page.goto("/coach");
+  await page.getByRole("button", { name: /First fixture conversation/ }).click();
+  await page.getByLabel("Your message").fill("Keep this failed draft");
+  await page.getByRole("button", { name: "Send to coach", exact: true }).click();
+  await expect(page.locator("main").getByRole("alert")).toContainText("Synthetic coach failure");
+  await expect(page.getByLabel("Your message")).toHaveValue("Keep this failed draft");
+  await page.getByRole("button", { name: /Second fixture conversation/ }).click();
+  await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
+  await expect(page.getByLabel("Your message")).toHaveValue("");
+});
+
+test("a delayed action does not restore a success banner after its inputs change", async ({ page }) => {
+  await fixture(page); await login(page); await page.goto("/analytics");
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/api/v1/analytics/refresh", async route => { await gate; return route.fallback(); });
+  const save = page.getByRole("button", { name: "Refresh & save insight" });
+  await save.click();
+  await expect(save).toBeDisabled();
+  await page.getByLabel("Start date").fill("2020-02-01");
+  release();
+  await expect(save).toBeEnabled();
+  await expect(page.getByText("Spending insight saved to your dashboard.", { exact: true })).toHaveCount(0);
+});
+
+for (const width of [320, 375, 390, 768, 1024, 1280, 1440]) {
+  test(`responsive public and workspace pages at ${width}px with long multilingual fixtures`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width, height: 900 });
+    const state = await fixture(page, true);
+    const check = async (path: string) => {
+      await page.goto(path);
+      await expect(path === "/missing-page" ? page.getByRole("heading", { name: "404", exact: true }) : page.locator("main")).toBeVisible();
+      await expect(page.locator(".loading")).toHaveCount(0);
+      const overflow = await page.evaluate(() => ({ width: innerWidth, document: document.documentElement.scrollWidth, elements: [...document.querySelectorAll("body *")].filter(element => { const bounds = element.getBoundingClientRect(); return bounds.width > 0 && bounds.right > innerWidth + 1 && !element.closest(".table-wrap,.messages,.conversation-list"); }).map(element => element.className || element.tagName).slice(0, 8) }));
+      expect(overflow.document, `${path}: ${JSON.stringify(overflow)}`).toBeLessThanOrEqual(width);
+    };
+    for (const path of ["/", "/login", "/signup", "/missing-page"]) await check(path);
+    await page.goto("/auth/callback");
+    await expect(page).toHaveURL(/\/login\?confirmation=failed$/);
+    await login(page);
+    for (const path of ["/dashboard", "/transactions", "/goals", `/goals/${goalId}`, "/analytics", "/planning", "/profile", "/coach"]) await check(path);
+    await page.getByRole("button", { name: /ConversationConversation/ }).click();
+    await expect(page.locator("article.message")).toHaveCount(3);
+    await expect(page.locator("article.message").nth(1)).toContainText("আপনার");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    const chatOverflow = await page.locator(".messages").evaluate(element => element.scrollWidth > element.clientWidth);
+    expect(chatOverflow).toBe(false);
+    await expect(page.getByRole("button", { name: "Delete conversation", exact: true })).toBeVisible();
+    await expect(page.getByLabel("Coach language")).toBeVisible();
+    expect(state.errors).toEqual([]);
+    // Deliberately malformed synthetic data exercises the existing error
+    // boundary without throwing against real records or exposing error details.
+    await page.route("**/api/v1/dashboard/summary", route => route.fulfill({ json: { success: true, message: "Synthetic boundary fixture", data: { goals: null } } }));
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading", { name: "Something went wrong", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try again", exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await page.unroute("**/api/v1/dashboard/summary");
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(page.getByRole("heading", { name: /^Hello,/ })).toBeVisible();
+  });
 }
 async function login(page: Page) {
   await page.goto("/login");
@@ -554,6 +703,8 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await expect(
     page.getByRole("status").and(page.locator(".notice")),
   ).toContainText("Transaction updated");
+  await expect(page.getByLabel("Note (optional)")).toHaveValue("Edited note");
+  await expect(page.getByLabel("Amount (BDT)", { exact: true })).toHaveValue("1000");
   await page.getByRole("link", { name: "Savings goals", exact: true }).click();
   await page.getByLabel("Goal name").fill("Emergency fund");
   await page.getByLabel("Target amount (BDT)").fill("1000");
@@ -563,6 +714,8 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await expect(
     page.getByRole("status").and(page.locator(".notice")),
   ).toContainText("goal is ready");
+  await expect(page.getByLabel("Goal name")).toHaveValue("");
+  await expect(page.getByLabel("Already saved (BDT)")).toHaveValue("0");
   await page.getByRole("link", { name: "Emergency fund", exact: true }).click();
   await page.getByLabel("Contribution amount (BDT)").fill("50");
   await page
@@ -571,6 +724,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await expect(
     page.getByRole("status").and(page.locator(".notice")),
   ).toContainText("Contribution added");
+  await expect(page.getByLabel("Contribution amount (BDT)")).toHaveValue("");
   await page.getByRole("button", { name: "Pause goal", exact: true }).click();
   await expect(page.getByRole("button", { name: "Resume goal" })).toBeVisible();
   await page.getByRole("button", { name: "Resume goal", exact: true }).click();
@@ -579,6 +733,11 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await expect(
     page.getByText("Savings plan calculated.", { exact: true }),
   ).toBeVisible();
+  await page.getByLabel("Spending reduction (%)").fill("51");
+  await expect(page.getByText("Savings plan calculated.", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Projected monthly saving", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Calculate savings plan" }).click();
+  await expect(page.getByText("Projected monthly saving", { exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Monthly trends" }),
@@ -607,6 +766,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await page.getByRole("link", { name: "AI Coach", exact: true }).click();
   await page.getByLabel("Conversation title").fill("My plan");
   await page.getByRole("button", { name: "New conversation" }).click();
+  await expect(page.getByLabel("Conversation title")).toHaveValue("");
   await page.getByLabel("Your message").fill("Help me review my spending.");
   await page.getByRole("button", { name: "Send to coach" }).click();
   await expect(
@@ -617,12 +777,13 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   await page.getByRole("button", { name: "Complete", exact: true }).click();
   await expect(page.getByText("COMPLETED", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Profile", exact: true }).click();
-  await page.getByLabel("Full name").fill("Demo Updated");
+  await page.getByLabel("Full name").fill("  Demo Updated  ");
   await page.getByLabel("Preferred coaching language").selectOption("en");
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(
     page.getByRole("status").and(page.locator(".notice")),
   ).toContainText("profile has been saved");
+  await expect(page.getByLabel("Full name")).toHaveValue("Demo Updated");
   await page.reload();
   await expect(page.getByLabel("Full name")).toHaveValue("Demo Updated");
   await expect(page.getByLabel("Preferred coaching language")).toHaveValue(

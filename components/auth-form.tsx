@@ -93,7 +93,7 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
           <Notice error="Public Supabase authentication configuration is unavailable. Check the server configuration." />
         )}
         <Notice error={error || auth.error} success={success} />
-        <form onSubmit={submit}>
+        <form onChange={() => { setError(""); setSuccess(""); }} onInvalidCapture={() => { setError(""); setSuccess(""); }} onSubmit={submit}>
           <fieldset disabled={busy || auth.loading || !auth.client}>
             {signup && (
               <Field label="Full name">

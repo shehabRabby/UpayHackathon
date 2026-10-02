@@ -14,7 +14,7 @@ export default function ProfilePage() {
     }, "Your profile has been saved.");
   }
   return <><PageTitle title="Your profile" description="Keep your name and coaching preference up to date." /><section className="card" style={{ maxWidth: 620 }}>
-    <Notice error={action.error} success={action.success} /><form onSubmit={submit}><fieldset disabled={action.busy}>
+    <Notice error={action.error} success={action.success} /><form key={JSON.stringify(profile)} onChange={action.clear} onInvalidCapture={action.clear} onSubmit={submit}><fieldset disabled={action.busy}>
       <Field label="Full name"><input name="fullName" required maxLength={200} defaultValue={profile?.fullName} /></Field>
       <Field label="Email"><input type="email" value={profile?.email ?? ""} readOnly /></Field><p className="muted">Email is verified by Supabase Auth and cannot be changed here.</p>
       <Field label="Phone (optional)"><input name="phone" type="tel" maxLength={30} defaultValue={profile?.phone ?? ""} /></Field>

@@ -214,11 +214,13 @@ export function AmountInput({
   name = "amount",
   value,
   positive = true,
+  max = 1_000_000_000_000,
   id,
 }: {
   name?: string;
   value?: number;
   positive?: boolean;
+  max?: number;
   id?: string;
 }) {
   return (
@@ -228,7 +230,7 @@ export function AmountInput({
       type="number"
       required
       min={positive ? "0.01" : "0"}
-      max="1000000000000"
+      max={max}
       step="0.01"
       defaultValue={value}
       inputMode="decimal"
