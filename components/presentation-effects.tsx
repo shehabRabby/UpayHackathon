@@ -35,6 +35,11 @@ export function PresentationEffects() {
     // Content remains visible without JS, during loading, and in full-page captures.
     const selector = ".feature-card,.metric,.catalog-row,.workflow-step,.final-cta,.story-hero,.catalog-hero,.workflow-hero,.security-hero,.hero-copy,.hero-visual";
     document.querySelectorAll(selector).forEach(element => observer.observe(element));
+    if (pathname === "/") document.querySelectorAll("[data-public-section]:not([data-public-section=hero]) > .container, .capability-strip > div, .home-process > div, .planning-triptych > *, .trust-ribbon, [data-public-section=capabilities] .feature-card").forEach((element, index) => {
+      element.classList.add("home-reveal");
+      (element as HTMLElement).style.setProperty("--home-delay", `${(index % 3) * 45}ms`);
+      observer.observe(element);
+    });
     const additions = new MutationObserver(records => {
       for (const record of records) for (const node of record.addedNodes) if (node instanceof Element) {
         if (node.matches(selector)) observer.observe(node);

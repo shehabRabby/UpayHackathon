@@ -1033,9 +1033,9 @@ test("original hero and reduced-motion presentation preserve visible content", a
   const state = await fixture(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.getByLabel("Illustrative financial coaching workspace")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Promotional image carousel" })).toBeVisible();
   await expect(page.getByText("Promotional image to be supplied")).toHaveCount(0);
-  await expect.poll(() => page.locator(".hero-phone").evaluate(node => getComputedStyle(node).animationName)).toBe("none");
+  await expect.poll(() => page.locator(".hero-slider").evaluate(node => getComputedStyle(node).animationName)).toBe("none");
   await page.goto("/features");
   await expect(page.locator("[data-feature]")).toHaveCount(8);
   await expect(page.locator("[data-feature]").last()).toBeVisible();
@@ -1131,5 +1131,84 @@ test("blue yellow visual review at desktop tablet and mobile widths", async ({ p
       await page.screenshot({ path: testInfo.outputPath(`${path.slice(1).replaceAll("/", "-")}-${width}.png`), fullPage: true });
     }
   }
+  expect(state.errors).toEqual([]);
+});
+
+
+test("supplied hero banners load, loop, pause, swipe, and respect reduced motion", async ({ page }) => {
+  test.setTimeout(90000);
+  const state = await fixture(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const slider = page.getByRole("region", { name: "Promotional image carousel" });
+  const dots = slider.getByRole("button", { name: /Show promotional slide/ });
+  const count = await dots.count();
+  await expect(slider.locator('h1, p, a')).toHaveCount(0);
+  await expect(slider.getByText('Pause', { exact: true })).toHaveCount(0);
+  expect(await page.locator('.public-main').evaluate(main => main.firstElementChild?.classList.contains('hero-slider'))).toBe(true);
+  expect(await slider.evaluate(node => node.nextElementSibling?.classList.contains('home-intro'))).toBe(true);
+  expect(count).toBeGreaterThan(0);
+  for (let index = 0; index < count; index++) {
+    await dots.nth(index).click();
+    await expect(dots.nth(index)).toHaveAttribute("aria-current", "true");
+    await expect.poll(() => slider.locator('.hero-slide[data-active=true] img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  }
+  await slider.getByRole("button", { name: "Next promotional slide" }).click();
+  await expect(dots.first()).toHaveAttribute("aria-current", "true");
+  await slider.getByRole("button", { name: "Previous promotional slide" }).click();
+  await expect(dots.last()).toHaveAttribute("aria-current", "true");
+  await dots.first().click();
+  await dots.first().press("ArrowRight");
+  await expect(dots.nth(1)).toHaveAttribute("aria-current", "true");
+  for (const width of [320,375,390,768,1024,1280,1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(slider).toBeVisible();
+    expect(await slider.evaluate(node => Math.round(node.getBoundingClientRect().width))).toBe(width);
+    const intro = page.locator('.home-intro');
+    const geometry = await slider.locator('.hero-slider-stage').evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const ratio = Number((node as HTMLElement).style.getPropertyValue('--banner-aspect'));
+      return rect.height / (rect.width / ratio);
+    });
+    expect(geometry).toBeCloseTo(width >= 1024 ? .8 : 1, 2);
+    const visual = intro.getByLabel('Illustrative financial coaching workspace');
+    await expect(visual).toBeVisible();
+    await expect(visual.getByText('BDT 15,000', { exact: true })).toBeVisible();
+    await expect(visual.getByLabel('Demo savings goal 25 percent complete')).toHaveAttribute('value', '25');
+    const layout = await intro.evaluate(node => {
+      const text = node.querySelector('.hero-copy')!.getBoundingClientRect();
+      const visual = node.querySelector('.hero-visual')!.getBoundingClientRect();
+      return { stacked: visual.top >= text.bottom, sideBySide: visual.left >= text.right };
+    });
+    expect(width <= 900 ? layout.stacked : layout.sideBySide).toBe(true);
+    expect(await intro.evaluate(node => node.getBoundingClientRect().top)).toBeGreaterThanOrEqual(await slider.evaluate(node => node.getBoundingClientRect().bottom));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    expect(await slider.locator('.hero-slide[data-active=true] img').evaluate(img => getComputedStyle(img).objectFit)).toBe("contain");
+  }
+  await dots.first().click();
+  await page.mouse.click(1, 1);
+  await page.waitForTimeout(4700);
+  await expect(dots.first()).toHaveAttribute("aria-current", "true");
+  const stage = slider.locator('.hero-slider-stage');
+  await stage.evaluate(node => {
+    const start = new Touch({ identifier: 1, target: node, clientX: 200 });
+    const end = new Touch({ identifier: 1, target: node, clientX: 100 });
+    node.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [start] }));
+    node.dispatchEvent(new TouchEvent("touchend", { bubbles: true, changedTouches: [end] }));
+  });
+  await expect(dots.nth(1)).toHaveAttribute("aria-current", "true");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await dots.first().click();
+  await stage.hover();
+  await page.mouse.click(1, 1);
+  await stage.hover();
+  await page.waitForTimeout(4700);
+  await expect(dots.first()).toHaveAttribute("aria-current", "true");
+  await page.mouse.move(1, 1);
+  await expect(dots.nth(1)).toHaveAttribute("aria-current", "true", { timeout: 6500 });
+  await dots.first().focus();
+  const focused = await slider.locator('[aria-current=true]').getAttribute('aria-label');
+  await page.waitForTimeout(4700);
+  await expect(slider.locator('[aria-current=true]')).toHaveAttribute('aria-label', focused!);
   expect(state.errors).toEqual([]);
 });

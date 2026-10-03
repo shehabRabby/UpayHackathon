@@ -83,3 +83,41 @@ html{scroll-behavior:auto}
 .hero-visual-label>span{background:var(--yellow);color:#002b55;padding:7px 10px;border-radius:6px;max-width:100%}
 .security-row{padding:26px 22px}.workflow-timeline::before{background:linear-gradient(var(--blue),var(--yellow),var(--blue))}
 @media(max-width:600px){.security-row{padding:20px 14px}}
+
+/* Home promotional carousel: contained imagery and fixed geometry avoid crop/shift. */
+.hero-slider{min-width:0;width:100%;background:#edf4ff;overflow:hidden;position:relative;border-bottom:1px solid #d0dff0}
+.hero-slider-stage{position:relative;background:#edf4ff;overflow:hidden;touch-action:pan-y}
+.hero-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateX(12px);transition:opacity .45s ease,transform .45s ease;pointer-events:none}
+.hero-slide[data-active=true]{opacity:1;transform:translateX(0);z-index:1}
+.hero-slide img{display:block;width:100%;height:100%;object-fit:contain}
+.hero-slider-controls{position:absolute;inset:0;z-index:2;pointer-events:none}
+.hero-slider-controls button{min-width:44px;min-height:44px;padding:0;border:1px solid #ffffff80;background:#ffffffe6;color:#0054a6;border-radius:50%;pointer-events:auto;box-shadow:0 2px 8px #00356818}
+.hero-slider-controls button:hover{background:#e1ecfb}.hero-slider-controls button:focus-visible{outline-color:#0054a6;outline-offset:-3px}
+.slider-arrow{position:absolute;top:50%;transform:translateY(-50%)}.slider-previous{left:12px}.slider-next{right:12px}.slider-arrow span{font-size:30px;line-height:1}.slider-dots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;min-width:0;max-width:calc(100% - 100px);padding:0 6px;background:#ffffffe6;border-radius:24px;box-shadow:0 2px 8px #00356818;pointer-events:auto}
+.hero-slider-controls .slider-dots button{min-width:28px;width:28px;border:0;box-shadow:none;background:transparent}.slider-dots span{width:8px;height:8px;border-radius:50%;background:#7189a6;transition:background .2s,width .2s}
+.slider-dots [aria-current=true] span{background:#ffd602;box-shadow:0 0 0 1px #8d7800;width:18px;border-radius:5px}
+.hero-slider-controls .slider-play{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:1px;height:1px;min-width:0;min-height:0;overflow:hidden;clip-path:inset(50%);pointer-events:none}.hero-slider-controls .slider-play:focus-visible{width:44px;height:44px;clip-path:none;pointer-events:auto}.slider-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.public-header .brand:hover,.public-header .brand:focus-visible,.public-footer .brand:focus-visible{color:var(--yellow)}
+.public-header .brand,.public-footer .brand{transition:color .16s}.public-header .brand-logo,.public-footer .brand-logo{object-fit:contain}
+@keyframes home-entrance{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slider-entrance{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:no-preference){.home-hero .hero-copy.reveal-once{animation:none}.home-hero .hero-copy>.eyebrow{animation:home-entrance .4s ease both}.home-hero .hero-copy>h1{animation:home-entrance .45s .06s ease both}.home-hero .hero-description{animation:home-entrance .45s .12s ease both}.home-hero .hero-copy>.actions,.home-hero .hero-copy>.auth-placeholder{animation:home-entrance .45s .18s ease both}.hero-slider{animation:slider-entrance .5s .12s ease both}.public-main [data-public-section] .feature-card{transition:transform .2s,box-shadow .2s}.public-main [data-public-section] .feature-card:hover{transform:translateY(-3px);box-shadow:0 12px 25px #0054a615}.home-reveal.reveal-once{animation:home-entrance .45s ease both;animation-delay:var(--home-delay,0ms)}}
+@media(max-width:600px){.slider-previous{left:4px}.slider-next{right:4px}.slider-dots{bottom:4px;padding:0 2px}.hero-slider-controls .slider-dots button{width:24px;min-width:24px;min-height:32px}.slider-arrow span{font-size:25px}}
+@media(prefers-reduced-motion:reduce){.hero-slide,.slider-dots span,.public-header .brand,.public-footer .brand{transition:none}.hero-slider,.home-hero .hero-copy>* ,.home-reveal.reveal-once{animation:none!important}}
+
+/* Introduction remains a separate Home section beneath the edge-to-edge banner. */
+.home-intro .landing-hero{display:block;padding-top:48px;padding-bottom:48px}.home-intro .hero-copy{max-width:800px;margin-inline:auto}.home-intro .hero-description{max-width:650px}
+@media(max-width:600px){.home-intro .landing-hero{padding-top:32px;padding-bottom:32px}}
+
+/* Final Home-only sizing: 20% shorter desktop banner, with uncropped imagery. */
+.hero-slider-stage{aspect-ratio:var(--banner-aspect)}
+@media(min-width:1024px){.hero-slider-stage{aspect-ratio:calc(var(--banner-aspect) / .8)}}
+.home-intro .landing-hero{display:grid;grid-template-columns:minmax(0,.46fr) minmax(0,.54fr);gap:36px;align-items:center;padding-top:28px;padding-bottom:32px}
+.home-intro .hero-copy{max-width:none;margin:0}.home-intro .hero-visual{min-height:500px;padding:30px 40px 70px}.home-intro .hero-orbit{inset:12px 8px 30px;border-width:18px}.home-intro .hero-phone{max-width:300px;padding:18px 15px 14px}.home-intro .phone-chart>div{height:52px}.home-intro .hero-coach-note{left:12px;right:18px;bottom:30px}.home-intro .hero-demo-label{bottom:2px}
+@media(max-width:900px){.home-intro .landing-hero{grid-template-columns:1fr;gap:20px}.home-intro .hero-visual{max-width:520px;width:100%;margin:auto}}
+@media(max-width:600px){.home-intro .landing-hero{padding-top:32px;padding-bottom:30px}.home-intro .hero-visual{padding:28px 14px 76px;min-height:480px}.home-intro .hero-orbit{inset:10px 0 36px;border-width:12px}.home-intro .hero-visual-label{padding:0;font-size:.6rem}.home-intro .hero-phone{max-width:280px;padding:18px 12px 14px}.home-intro .hero-coach-note{left:0;right:0;bottom:27px;padding:12px;gap:9px}.home-intro .hero-demo-label{font-size:.62rem}}
+@keyframes coach-backdrop{from{opacity:0;transform:rotate(-7deg) scale(.97)}to{opacity:1;transform:rotate(-7deg) scale(1)}}
+@keyframes coach-bars{from{opacity:.4;transform:scaleY(.85)}to{opacity:1;transform:scaleY(1)}}
+.home-intro .hero-phone,.home-intro .hero-coach-note{animation:none}
+@media(prefers-reduced-motion:no-preference){.home-intro .hero-visual.reveal-once .hero-orbit{animation:coach-backdrop .45s ease both}.home-intro .hero-visual.reveal-once .hero-phone{animation:home-entrance .45s .06s ease both}.home-intro .hero-visual.reveal-once .hero-coach-note{animation:home-entrance .45s .18s ease both}.home-intro .hero-visual.reveal-once .phone-chart i{transform-origin:bottom;animation:coach-bars .4s .2s ease both}}
+@media(prefers-reduced-motion:reduce){.home-intro .hero-visual,.home-intro .hero-visual *{animation:none!important;transition:none!important}}
