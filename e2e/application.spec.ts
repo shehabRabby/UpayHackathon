@@ -31,7 +31,7 @@ const incomeId = "00000000-0000-4000-8000-000000000004";
 const expenseId = "00000000-0000-4000-8000-000000000005";
 const conversationId = "00000000-0000-4000-8000-000000000006";
 const recommendationId = "00000000-0000-4000-8000-000000000007";
-async function fixture(page: Page, longContent = false) {
+async function fixture(page: Page, longContent = false, presentation = false) {
   let profile: Profile | null = null;
   let transactions: Transaction[] = [],
     goals: Goal[] = [],
@@ -108,6 +108,18 @@ async function fixture(page: Page, longContent = false) {
     contributions.push({ contributionId: "fixture-contribution", goalId, transactionId: null, amount: 1e11, contributionDate: now() });
     spending.transactionCount = 1;
     spending.categorySpending = [{ categoryId: expenseId, categoryName: "Category".repeat(25), totalSpent: 1e12, transactionCount: 1, percentage: 100 }];
+  }
+  if (presentation) {
+    profile = { userId, fullName: "Demo Member", email: "demo@example.test", phone: null, preferredLanguage: "en" };
+    goals = [{ goalId, goalName: "Emergency fund", targetAmount: 40000, currentAmount: 10000, remainingAmount: 30000, targetDate: "2099-01-01", requiredMonthlySaving: 2500, status: "ACTIVE", progressPercentage: 25, isOverdue: false, createdAt: now(), updatedAt: now() }];
+    transactions = [{ transactionId, categoryId: incomeId, categoryName: "Cash In", transactionType: "CASH_IN", amount: 50000, merchantName: "Monthly income", description: null, transactionDate: now(), source: "manual", createdAt: now() }];
+    conversations = [{ conversationId, title: "Planning my emergency fund", createdAt: now(), updatedAt: now() }];
+    messages = ["Review your recorded spending and choose a monthly saving you can maintain.", "আপনার সঞ্চয়ের লক্ষ্য অনুযায়ী একটি বাস্তবসম্মত মাসিক পরিকল্পনা তৈরি করুন।", "Apnar emergency fund er jonno protimashe ekta practical savings target set korun."].map((message, index) => ({ messageId: `presentation-${index}`, conversationId, role: "ASSISTANT", message, createdAt: now() }));
+    recommendations = [{ recommendationId, recommendationType: "BUDGET", recommendationText: "Review essential spending before choosing your next savings contribution.", priority: "HIGH", status: "VIEWED", createdAt: now() }];
+    spending.totalIncome = 50000; spending.totalExpenses = 35000; spending.netCashFlow = 15000; spending.transactionCount = 4;
+    spending.spendingTrends = [{ month: "2026-09", totalIncome: 45000, totalExpenses: 33000, netCashFlow: 12000, transactionCount: 3 }, { month: "2026-10", totalIncome: 50000, totalExpenses: 35000, netCashFlow: 15000, transactionCount: 4 }];
+    spending.categorySpending = [{ categoryId: expenseId, categoryName: "Food & essentials", totalSpent: 35000, transactionCount: 3, percentage: 100 }];
+    health.healthScore = 62;
   }
   const user = {
     id: userId,
@@ -294,12 +306,12 @@ async function fixture(page: Page, longContent = false) {
       });
     if (path === "/dashboard/summary")
       return respond({
-        balance: transactions.reduce((sum, item) => sum + item.amount, 0),
-        totalIncome: 1000,
-        totalExpenses: 0,
-        monthlyIncome: 1000,
-        monthlyExpenses: 0,
-        monthlyNetCashFlow: 1000,
+        balance: presentation ? 15000 : transactions.reduce((sum, item) => sum + item.amount, 0),
+        totalIncome: presentation ? 50000 : 1000,
+        totalExpenses: presentation ? 35000 : 0,
+        monthlyIncome: presentation ? 50000 : 1000,
+        monthlyExpenses: presentation ? 35000 : 0,
+        monthlyNetCashFlow: presentation ? 15000 : 1000,
         totalSaved: goals.reduce((sum, goal) => sum + goal.currentAmount, 0),
         goalCount: goals.length,
         goals,
@@ -531,7 +543,7 @@ for (const width of [320, 375, 390, 768, 1024, 1280, 1440]) {
       const overflow = await page.evaluate(() => ({ width: innerWidth, document: document.documentElement.scrollWidth, elements: [...document.querySelectorAll("body *")].filter(element => { const bounds = element.getBoundingClientRect(); return bounds.width > 0 && bounds.right > innerWidth + 1 && !element.closest(".table-wrap,.messages,.conversation-list"); }).map(element => element.className || element.tagName).slice(0, 8) }));
       expect(overflow.document, `${path}: ${JSON.stringify(overflow)}`).toBeLessThanOrEqual(width);
     };
-    for (const path of ["/", "/about", "/login", "/signup", "/missing-page"]) await check(path);
+    for (const path of ["/", "/about", "/features", "/how-it-works", "/security", "/login", "/signup", "/missing-page"]) await check(path);
     await page.goto("/auth/callback");
     await expect(page).toHaveURL(/\/login\?confirmation=failed$/);
     await login(page);
@@ -560,7 +572,7 @@ for (const width of [320, 375, 390, 768, 1024, 1280, 1440]) {
 }
 async function login(page: Page) {
   await page.goto("/login");
-  await page.getByLabel("Email", { exact: true }).fill("demo@example.test");
+  await page.getByLabel("Email address", { exact: true }).fill("demo@example.test");
   await page
     .getByLabel("Password", { exact: true })
     .fill("Synthetic-password-123");
@@ -660,7 +672,7 @@ test("protected pages, invalid credentials, and email-confirmation signup", asyn
   const state = await fixture(page);
   await page.goto("/goals");
   await expect(page).toHaveURL(/\/login$/);
-  await page.getByLabel("Email", { exact: true }).fill("invalid@example.test");
+  await page.getByLabel("Email address", { exact: true }).fill("invalid@example.test");
   await page
     .getByLabel("Password", { exact: true })
     .fill("Synthetic-password-123");
@@ -670,7 +682,7 @@ test("protected pages, invalid credentials, and email-confirmation signup", asyn
   );
   await page.goto("/signup");
   await page.getByLabel("Full name").fill("Demo Member");
-  await page.getByLabel("Email", { exact: true }).fill("confirm@example.test");
+  await page.getByLabel("Email address", { exact: true }).fill("confirm@example.test");
   await page
     .getByLabel("Password", { exact: true })
     .fill("Synthetic-password-123");
@@ -688,7 +700,7 @@ test("signup, financial workflows, coaching boundaries, and session persistence"
   const state = await fixture(page);
   await page.goto("/signup");
   await page.getByLabel("Full name").fill("Demo Member");
-  await page.getByLabel("Email", { exact: true }).fill("demo@example.test");
+  await page.getByLabel("Email address", { exact: true }).fill("demo@example.test");
   await page
     .getByLabel("Password", { exact: true })
     .fill("Synthetic-password-123");
@@ -852,7 +864,7 @@ test("public pages use static demos and signed-out navigation with working CTAs"
   const financialRequests: string[] = [];
   page.on("request", request => { if (request.url().includes("/api/v1/")) financialRequests.push(new URL(request.url()).pathname); });
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Understand your money/, level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Smarter money/, level: 1 })).toBeVisible();
   await expect(page.getByText("Illustrative demo", { exact: true }).first()).toBeVisible();
   await openPublicMenu(page);
   const header = page.locator(".public-header");
@@ -864,7 +876,10 @@ test("public pages use static demos and signed-out navigation with working CTAs"
   await expect(page.getByRole("heading", { name: "Financial clarity should be easier." })).toBeVisible();
   await expect(page.locator("main")).toContainText("no live Upay wallet connection");
   expect(financialRequests).toEqual([]);
-  await page.locator("main").getByRole("link", { name: "Get started", exact: true }).click();
+  await page.locator("main").getByRole("link", { name: "Explore what the product can do", exact: true }).click();
+  await expect(page).toHaveURL(/\/features$/);
+  await openPublicMenu(page);
+  await header.getByRole("link", { name: "Get started", exact: true }).click();
   await expect(page).toHaveURL(/\/signup$/);
   await page.locator("main").getByRole("link", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
@@ -943,11 +958,178 @@ test("visual review captures static public, auth and synthetic workspace screens
     await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
   }
   await page.goto("/coach");
-  await expect(page.getByRole("heading", { name: "Start a conversation about your finances." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What would you like to understand about your money?" })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("coach-empty.png"), fullPage: true });
   await openConversations(page);
   await page.getByRole("button", { name: /ConversationConversation/ }).click();
   await expect(page.locator("article.message")).toHaveCount(3);
   await page.screenshot({ path: testInfo.outputPath("coach.png"), fullPage: true });
+  expect(state.errors).toEqual([]);
+});
+
+test("standalone public routes support active navigation, refresh and browser history", async ({ page }) => {
+  const state = await fixture(page);
+  const financialRequests: string[] = [];
+  page.on("request", request => { if (request.url().includes("/api/v1/")) financialRequests.push(request.url()); });
+  await page.goto("/");
+  for (const [name, path, heading] of [["Features", "/features", "More clarity. More ways to plan."], ["How it works", "/how-it-works", "Your records. A practical path forward."], ["Security", "/security", "Your financial records belong to you."]]) {
+    await openPublicMenu(page);
+    await page.getByRole("navigation", { name: "Public navigation" }).getByRole("link", { name, exact: true }).click();
+    await expect(page).toHaveURL(path);
+    await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
+    await page.reload();
+    await openPublicMenu(page);
+    await expect(page.getByRole("navigation", { name: "Public navigation" }).getByRole("link", { name, exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Footer navigation" }).getByRole("link", { name, exact: true })).toHaveAttribute("href", path);
+  }
+  await page.goBack(); await expect(page).toHaveURL("/how-it-works");
+  await page.goForward(); await expect(page).toHaveURL("/security");
+  expect(financialRequests).toEqual([]); expect(state.errors).toEqual([]);
+});
+
+test("public route clicks start at the top and history restores the previous position", async ({ page }) => {
+  await fixture(page);
+  await page.goto("/");
+  for (const [label, path] of [["About", "/about"], ["Features", "/features"], ["How it works", "/how-it-works"], ["Security", "/security"], ["Home", "/"]]) {
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await openPublicMenu(page);
+    await page.getByRole("navigation", { name: "Public navigation" }).getByRole("link", { name: label, exact: true }).click();
+    await expect(page).toHaveURL(path);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  }
+  for (const [label, path] of [["About", "/about"], ["Features", "/features"], ["How it works", "/how-it-works"], ["Security", "/security"]]) {
+    await page.getByRole("navigation", { name: "Footer navigation" }).getByRole("link", { name: label, exact: true }).click();
+    await expect(page).toHaveURL(path);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  }
+  await page.goto("/about");
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(600);
+  await page.getByRole("link", { name: "Explore what the product can do" }).click();
+  await expect(page).toHaveURL("/features");
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.goBack();
+  await expect(page).toHaveURL("/about");
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await page.goForward();
+  await expect(page).toHaveURL("/features");
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  for (const [label, path] of [["Sign in", "/login"], ["Get started", "/signup"]]) {
+    await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "instant" }));
+    await openPublicMenu(page);
+    await page.locator(".public-header").getByRole("link", { name: label, exact: true }).click();
+    await expect(page).toHaveURL(path);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  }
+  await page.goto("/features");
+  await page.locator(".catalog-index").getByRole("link", { name: /Savings goals/i }).click();
+  await expect(page).toHaveURL(/#goals$/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+});
+
+test("original hero and reduced-motion presentation preserve visible content", async ({ page }) => {
+  const state = await fixture(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect(page.getByLabel("Illustrative financial coaching workspace")).toBeVisible();
+  await expect(page.getByText("Promotional image to be supplied")).toHaveCount(0);
+  await expect.poll(() => page.locator(".hero-phone").evaluate(node => getComputedStyle(node).animationName)).toBe("none");
+  await page.goto("/features");
+  await expect(page.locator("[data-feature]")).toHaveCount(8);
+  await expect(page.locator("[data-feature]").last()).toBeVisible();
+  expect(state.errors).toEqual([]);
+});
+
+test("workspace summaries and form hints use recorded data without changing fields", async ({ page }) => {
+  await fixture(page, false, true); await login(page); await page.goto("/transactions");
+  await expect(page.locator(".workspace-metrics")).toContainText("50,000");
+  await expect(page.locator(".workspace-metrics")).toContainText("35,000");
+  await expect(page.locator(".workspace-metrics")).toContainText("15,000");
+  await expect(page.getByLabel("Amount (BDT)", { exact: true })).toHaveAttribute("placeholder", "Enter amount in BDT");
+  await expect(page.getByLabel("Note (optional)")).toHaveAttribute("placeholder", "Add an optional note");
+  await page.goto("/goals");
+  await expect(page.locator(".summary-scope")).toContainText("Current page 1");
+  await expect(page.locator(".workspace-metrics")).toContainText("25%");
+  await expect(page.getByLabel("Goal name", { exact: true })).toHaveAttribute("placeholder", "e.g. Laptop Fund");
+  await page.goto("/planning");
+  await expect(page.getByLabel("Monthly income (BDT)")).toHaveAttribute("placeholder", "Enter monthly income");
+  await expect(page.getByLabel("Purchase amount (BDT)")).toHaveAttribute("placeholder", "Enter purchase amount");
+});
+
+test("public pages have distinct useful content and no private financial requests", async ({ page }) => {
+  await fixture(page);
+  const requests: string[] = [];
+  page.on("request", request => { if (request.url().includes("/api/v1/")) requests.push(request.url()); });
+  await page.goto("/");
+  await expect(page.locator("[data-public-section]")).toHaveCount(8);
+  await expect(page.locator(".capability-strip")).toContainText("8Core capabilities");
+  await expect(page.locator(".home-hero").getByRole("link", { name: "Explore features", exact: true })).toHaveAttribute("href", "/features");
+  await page.goto("/about"); await expect(page.locator("[data-public-section]")).toHaveCount(7);
+  await expect(page.locator(".ecosystem")).toContainText("Recorded transactions");
+  await page.goto("/features"); await expect(page.locator("[data-feature]")).toHaveCount(8);
+  await expect(page.locator("[data-feature=goals]")).toContainText("Pause/resume");
+  await expect(page.locator("[data-feature=affordability]")).toContainText("emergency-buffer");
+  await page.goto("/how-it-works"); await expect(page.locator("[data-workflow-step]")).toHaveCount(9);
+  await expect(page.locator(".workflow-loop>span")).toHaveText(["Record", "↓Understand", "↓Plan", "↓Ask AI", "↓Improve"]);
+  await page.goto("/security"); await expect(page.locator("[data-security-section]")).toHaveCount(7);
+  await expect(page.locator(".wallet-boundary")).toContainText("not a wallet connection");
+  expect(requests).toEqual([]);
+});
+
+test("auth password visibility preserves values and supports keyboard and autocomplete", async ({ page }) => {
+  await fixture(page);
+  for (const path of ["/login", "/signup"]) {
+    await page.goto(path);
+    const password = page.getByLabel("Password", { exact: true });
+    await expect(page.getByLabel("Email address", { exact: true })).toHaveAttribute("placeholder", path === "/login" ? "Enter your email" : "Enter your email address");
+    await expect(password).toHaveAttribute("autocomplete", path === "/login" ? "current-password" : "new-password");
+    if (path === "/signup") await expect(page.getByLabel("Full name", { exact: true })).toHaveAttribute("placeholder", "Enter your full name");
+    await password.fill("Synthetic-password-123");
+    await expect(password).toHaveAttribute("type", "password");
+    const show = page.getByRole("button", { name: "Show password", exact: true });
+    await expect(show).toHaveAttribute("type", "button"); await show.focus(); await page.keyboard.press("Enter");
+    await expect(password).toHaveAttribute("type", "text"); await expect(password).toHaveValue("Synthetic-password-123");
+    await expect(page).toHaveURL(path);
+    await page.getByRole("button", { name: "Hide password", exact: true }).click();
+    await expect(password).toHaveAttribute("type", "password"); await expect(password).toHaveValue("Synthetic-password-123");
+    const labels = await password.evaluate(input => (input as HTMLInputElement).labels?.length);
+    expect(labels).toBe(1);
+  }
+});
+
+test("workspace branding and public home link return to authenticated public navigation", async ({ page }) => {
+  await fixture(page); await login(page);
+  const brand = page.locator(".sidebar").getByRole("link", { name: "Upay Financial Coach", exact: true });
+  await expect(brand).toHaveAttribute("href", "/"); await brand.click(); await expect(page).toHaveURL("/");
+  await openPublicMenu(page); await expect(page.locator(".public-header").getByRole("link", { name: "Dashboard", exact: true })).toBeVisible();
+  await page.goto("/dashboard"); await openAppMenu(page);
+  const home = page.locator(".sidebar").getByRole("link", { name: "Public Home", exact: true });
+  await expect(home).toHaveAttribute("href", "/"); await home.click(); await expect(page).toHaveURL("/");
+});
+
+test("blue yellow visual review at desktop tablet and mobile widths", async ({ page }, testInfo) => {
+  test.setTimeout(120_000); // Full-page captures for all public routes at four widths.
+  const state = await fixture(page, false, true);
+  for (const width of [1440, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    if (width !== 1440) { await page.goto("/"); await openPublicMenu(page); await page.locator(".public-header").getByRole("button", { name: "Sign out", exact: true }).click(); }
+    for (const path of ["/", "/about", "/features", "/how-it-works", "/security", "/login", "/signup"]) {
+      await page.goto(path); await expect(page.locator("main h1")).toBeVisible();
+      await expect(page.locator(".brand-logo").first()).toBeVisible();
+      await expect.poll(() => page.locator(".brand-logo").first().evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      await page.screenshot({ path: testInfo.outputPath(`${path === "/" ? "home" : path.slice(1)}-${width}.png`), fullPage: true });
+    }
+    await login(page);
+    for (const path of ["/dashboard", "/transactions", "/goals", `/goals/${goalId}`, "/analytics", "/coach", "/planning", "/profile"]) {
+      await page.goto(path); await expect(page.locator("main h1")).toBeVisible();
+      await expect(page.locator(".loading")).toHaveCount(0);
+      if (path === "/coach") { await openConversations(page); await page.getByRole("button", { name: "Planning my emergency fund", exact: false }).click(); await expect(page.locator("article.message")).toHaveCount(3); }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      await page.screenshot({ path: testInfo.outputPath(`${path.slice(1).replaceAll("/", "-")}-${width}.png`), fullPage: true });
+    }
+  }
   expect(state.errors).toEqual([]);
 });

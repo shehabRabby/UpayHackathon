@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 export function Brand({ href = "/" }: { href?: string }) {
-  return <Link href={href} className="brand" aria-label="Upay Financial Coach"><span className="brand-mark" aria-hidden="true">u<span /></span><span className="brand-name">UPAY<small>Financial Coach</small></span></Link>;
+  return <Link href={href} className="brand" aria-label="Upay Financial Coach"><Image className="brand-logo" src="/upay-logo.png" alt="" width={48} height={48} /><span className="brand-name">UPAY<small>AI Financial Coach</small></span></Link>;
 }
 export function ProductIcon({ name, className = "" }: { name: string; className?: string }) {
   const paths: Record<string, string> = {
@@ -14,6 +15,8 @@ export function ProductIcon({ name, className = "" }: { name: string; className?
     shield: "M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4zM8 12l3 3 5-6",
     arrow: "M4 12h16m-6-6 6 6-6 6",
     menu: "M4 6h16M4 12h16M4 18h16", close: "M5 5l14 14M19 5 5 19",
+    eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7zM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
+    "eye-off": "M3 3l18 18M10 5a12 12 0 0 1 12 7s-1 2-3 4M6 6c-3 2-4 6-4 6s4 7 10 7c2 0 4-1 5-2M10 10a3 3 0 0 0 4 4",
   };
   return <svg className={`product-icon ${className}`} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d={paths[name] ?? paths.dashboard} /></svg>;
 }

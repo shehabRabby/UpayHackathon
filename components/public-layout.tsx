@@ -4,11 +4,11 @@ import { useId, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-provider";
 import { Brand, ProductIcon } from "./brand";
-const links = [["/", "Home"], ["/about", "About"], ["/#features", "Features"], ["/#how-it-works", "How it works"], ["/#security", "Security"]];
-export function PublicActions({ dashboardLabel = "Go to dashboard", signupLabel = "Get started" }: { dashboardLabel?: string; signupLabel?: string }) {
+const links = [["/", "Home"], ["/about", "About"], ["/features", "Features"], ["/how-it-works", "How it works"], ["/security", "Security"]];
+export function PublicActions({ dashboardLabel = "Go to dashboard", signupLabel = "Get started", explore = false }: { dashboardLabel?: string; signupLabel?: string; explore?: boolean }) {
   const { loading, session } = useAuth();
   if (loading) return <div className="auth-placeholder" role="status" aria-label="Checking session"><span /><span /></div>;
-  return <div className="actions">{session ? <Link className="button" href="/dashboard">{dashboardLabel}<ProductIcon name="arrow" /></Link> : <><Link className="button" href="/signup">{signupLabel}<ProductIcon name="arrow" /></Link><Link className="button secondary" href="/login">Sign in</Link></>}</div>;
+  return <div className="actions">{session ? <><Link className="button brand-cta" href="/dashboard">{dashboardLabel}<ProductIcon name="arrow" /></Link>{explore && <Link className="button secondary" href="/features">Explore features</Link>}</> : <><Link className="button brand-cta" href="/signup">{signupLabel}<ProductIcon name="arrow" /></Link><Link className="button secondary" href={explore ? "/features" : "/login"}>{explore ? "Explore features" : "Sign in"}</Link></>}</div>;
 }
 export function PublicHeader() {
   const auth = useAuth(), path = usePathname(), id = useId(), toggle = useRef<HTMLButtonElement>(null);

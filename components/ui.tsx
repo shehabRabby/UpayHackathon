@@ -114,15 +114,19 @@ export function Metric({
   label,
   value,
   note,
+  icon = "analytics",
+  tone = "brand",
 }: {
   label: string;
   value: ReactNode;
   note?: string;
+  icon?: string;
+  tone?: "brand" | "success" | "expense" | "highlight";
 }) {
   const currency = typeof value === "string" ? /^(BDT\s+)(.+)$/.exec(value) : null;
   return (
-    <section className="metric">
-      <div className="metric-top"><p>{label}</p><span className="metric-icon"><ProductIcon name="analytics" /></span></div>
+    <section className="metric" data-tone={tone}>
+      <div className="metric-top"><p>{label}</p><span className="metric-icon"><ProductIcon name={icon} /></span></div>
       <strong className={currency && currency[0].length > 18 ? "long-value" : undefined}>{currency ? <><span className="currency-code">{currency[1]}</span><span className="currency-value">{currency[2]}</span></> : value}</strong>
       {note && <small>{note}</small>}
     </section>
@@ -181,10 +185,12 @@ export function GoalCard({ goal }: { goal: Goal }) {
         <span>{money(goal.currentAmount)} saved</span>
         <span>{goal.progressPercentage}%</span>
       </div>
+      <p className="goal-remaining">{money(goal.remainingAmount)} remaining</p>
       <p className="muted">
         Target {money(goal.targetAmount)} · {date(goal.targetDate)}
         {goal.isOverdue ? " · Overdue" : ""}
       </p>
+      <Link className="inline-link goal-detail-link" href={`/goals/${goal.goalId}`}>View goal <ProductIcon name="arrow" /></Link>
     </article>
   );
 }
@@ -219,12 +225,14 @@ export function AmountInput({
   positive = true,
   max = 1_000_000_000_000,
   id,
+  placeholder = "Enter amount in BDT",
 }: {
   name?: string;
   value?: number;
   positive?: boolean;
   max?: number;
   id?: string;
+  placeholder?: string;
 }) {
   return (
     <input
@@ -237,6 +245,7 @@ export function AmountInput({
       step="0.01"
       defaultValue={value}
       inputMode="decimal"
+      placeholder={placeholder}
     />
   );
 }

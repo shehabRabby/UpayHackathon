@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
       <aside className="sidebar" onKeyDown={event => { if (event.key === "Escape" && menuOpen) { setMenuOpen(false); menuButton.current?.focus(); } }}>
-        <div className="sidebar-header"><Brand href="/dashboard" /><button ref={menuButton} type="button" className="navigation-toggle secondary" aria-expanded={menuOpen} aria-controls={menuId} onClick={() => setMenuOpen(value => !value)}><ProductIcon name={menuOpen ? "close" : "menu"} />Menu</button></div>
+        <div className="sidebar-header"><Brand href="/" /><button ref={menuButton} type="button" className="navigation-toggle secondary" aria-expanded={menuOpen} aria-controls={menuId} onClick={() => setMenuOpen(value => !value)}><ProductIcon name={menuOpen ? "close" : "menu"} />Menu</button></div>
         <div id={menuId} className="app-navigation" data-open={menuOpen}>
         <p className="nav-caption">YOUR WORKSPACE</p>
         <nav aria-label="Main navigation">
@@ -75,6 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <Link href="/" className="public-home-link" onClick={() => setMenuOpen(false)}><ProductIcon name="arrow" />Public Home</Link>
           <div className="account-identity"><span className="user-avatar" aria-hidden="true">{auth.profile?.fullName.slice(0, 1).toUpperCase() ?? "U"}</span><div><p>{auth.profile?.fullName ?? "Your account"}</p><small>{auth.profile?.email ?? "Private account"}</small></div></div>
           <button className="secondary" disabled={loggingOut} onClick={logout}>
             {loggingOut ? "Signing out…" : "Sign out"}

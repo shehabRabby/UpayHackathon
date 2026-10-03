@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useAuth } from "./auth-provider";
 import { Field, Notice } from "./ui";
 import { PublicHeader, PublicFooter } from "./public-layout";
-import { ProductIcon } from "./brand";
+import { Brand, ProductIcon } from "./brand";
+import { PasswordInput } from "./password-input";
 
 export function AuthForm({ signup = false }: { signup?: boolean }) {
   const auth = useAuth(),
@@ -80,9 +81,9 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
   }
   return (
     <><PublicHeader /><main id="main-content" className="auth-page">
-      <section className="auth-story"><p className="eyebrow">YOUR MONEY, WITH MORE CLARITY</p><h2>{signup ? <>A clearer picture.<br /><span>A more purposeful plan.</span></> : <>Pick up where<br /><span>your plan left off.</span></>}</h2><p>Bring your recorded finances together, build savings goals and explore your next decision with useful context.</p><ul className="feature-list"><li><ProductIcon name="analytics" /> Understand your income and spending</li><li><ProductIcon name="goals" /> Make steady progress toward your goals</li><li><ProductIcon name="coach" /> Get guidance in your preferred language</li></ul><p className="auth-scope">Private account access · Recorded financial data<br />Prototype. No live Upay wallet connection.</p></section>
+      <section className="auth-story"><Brand /><p className="eyebrow">YOUR MONEY. A SMARTER PLAN.</p><h2>{signup ? <>A purposeful start.<br /><span>For your financial goals.</span></> : <>Your smarter<br /><span>financial companion.</span></>}</h2><p>One private workspace to understand your records, build savings goals and explore your next decision.</p><ul className="feature-list"><li><ProductIcon name="analytics" /> Understand your spending</li><li><ProductIcon name="goals" /> Build purposeful savings goals</li><li><ProductIcon name="planning" /> Plan major decisions</li><li><ProductIcon name="coach" /> Get multilingual AI-assisted guidance</li></ul><div className={'auth-graphic'} aria-hidden={true}><span /><span /><span /><span /><span /><span /></div><p className={'auth-scope'}>Recorded financial data. No live Upay wallet connection.</p></section>
       <section className="card auth-card">
-        <p className="eyebrow">A LITTLE CLARITY GOES A LONG WAY</p>
+        <p className="eyebrow">{signup ? "YOUR FIRST STEP TOWARD CLARITY" : "A LITTLE CLARITY GOES A LONG WAY"}</p>
         <h1>{signup ? "Create your account" : "Welcome back"}</h1>
         <p>
           {signup
@@ -99,19 +100,20 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
               <Field label="Full name">
                 <input
                   name="fullName"
+                  placeholder="Enter your full name"
                   autoComplete="name"
                   required
                   maxLength={200}
                 />
               </Field>
             )}
-            <Field label="Email">
-              <input name="email" type="email" autoComplete="email" required />
+            <Field label="Email address">
+              <input name="email" type="email" placeholder={signup ? "Enter your email address" : "Enter your email"} autoComplete="email" required />
             </Field>
             <Field label="Password">
-              <input
+              <PasswordInput
                 name="password"
-                type="password"
+                placeholder={signup ? "Create a secure password" : "Enter your password"}
                 autoComplete={signup ? "new-password" : "current-password"}
                 minLength={signup ? 8 : undefined}
                 required
@@ -124,7 +126,7 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
               </small>
             )}
             <button className="full" type="submit">
-              {busy ? "Please wait…" : signup ? "Create account" : "Sign in"}
+              {busy ? (signup ? "Creating account…" : "Signing in…") : signup ? "Create account" : "Sign in"}
             </button>
           </fieldset>
         </form>

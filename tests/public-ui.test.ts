@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const auth = vi.hoisted(() => ({ loading: false, session: null as null | { user: { id: string } }, logout: vi.fn() }));
 vi.mock("@/components/auth-provider", () => ({ useAuth: () => auth }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
-import { PublicActions, PublicHeader } from "@/components/public-layout";
+import { PublicActions, PublicHeader, PublicFooter } from "@/components/public-layout";
 
 describe("Public navigation follows the existing auth state", () => {
   beforeEach(() => { auth.loading = false; auth.session = null; auth.logout.mockClear(); });
@@ -45,7 +45,25 @@ describe("Public navigation follows the existing auth state", () => {
     expect(html).toContain('aria-label="Public navigation"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('href="/about"');
-    expect(html).toContain('href="/#security"');
+    expect(html).toContain('href="/security"');
     expect(html).toContain('aria-hidden="true"');
+  });
+  it("uses standalone routes in the navbar and footer rather than home anchors", () => {
+    for (const component of [PublicHeader, PublicFooter]) {
+      const html = renderToStaticMarkup(createElement(component));
+      for (const path of ["/about", "/features", "/how-it-works", "/security"]) expect(html).toContain(`href="${path}"`);
+      expect(html).not.toContain('href="/#');
+    }
+  });
+  it("keeps feature exploration available beside the authenticated hero action", () => {
+    auth.session = { user: { id: "synthetic-user" } };
+    const html = renderToStaticMarkup(createElement(PublicActions, { explore: true }));
+    expect(html).toContain('href="/features"');
+    expect(html).toContain('href="/dashboard"');
+    expect(html).not.toContain('href="/signup"');
+  });
+  it("offers feature exploration beside signup on the logged-out hero", () => {
+    const html = renderToStaticMarkup(createElement(PublicActions, { explore: true }));
+    expect(html).toContain('href="/features"'); expect(html).toContain('href="/signup"'); expect(html).not.toContain('href="/login"');
   });
 });
