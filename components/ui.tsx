@@ -68,6 +68,9 @@ export function Notice({
     </>
   );
 }
+export function LoadingIndicator({ children = "Loading your data…" }: { children?: ReactNode }) {
+  return <p className="loading loading-indicator" role="status"><span className="loading-spinner" aria-hidden="true" /><span>{children}</span></p>;
+}
 export function ResourceState({
   loading,
   error,
@@ -80,9 +83,7 @@ export function ResourceState({
   return (
     <>
       {loading && (
-        <p className="loading" role="status">
-          Loading your data…
-        </p>
+        <LoadingIndicator />
       )}
       {error && (
         <div className="notice error" role="alert">
