@@ -6,15 +6,13 @@ AI-Powered Personal Financial Management and Decision-Support Prototype
 
 Live Application: https://upay-ai-hackathon.vercel.app/
 
-Team Name: [Team Name]
+Team Name: HackStreetBoys
 
-Team Members: [Team Members]
+Institution: Daffodil International University
 
-Institution: [Institution]
+Hackathon/Event: AI Hackathon/Upay AI Dev Fest 2026
 
-Hackathon/Event: [Hackathon/Event]
-
-Submission Date: [Submission Date]
+Submission Date: 4/10/2026
 
 This report documents the inspected repository as of 3 October 2026. It describes a prototype based on user-recorded financial data, without a live Upay wallet connection or official Upay endorsement.
 
