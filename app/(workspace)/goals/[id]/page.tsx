@@ -7,6 +7,57 @@ import { useAction, useResource } from "@/lib/frontend/hooks";
 import { numeric } from "@/lib/frontend/forms";
 import type { Goal, Contribution, SavingsPlan } from "@/lib/frontend/types";
 import { AmountInput, Empty, Field, Limitations, Metric, Notice, PageTitle, Pagination, ResourceState, date, money } from "@/components/ui";
+
+function SavingsPlanResult({ plan }: { plan: SavingsPlan }) {
+  return <>
+    <section className="section-space" aria-labelledby="savings-plan-summary">
+      <h3 id="savings-plan-summary">Savings plan summary</h3>
+      <p className="muted">Recorded activity before and after your selected spending-reduction assumption.</p>
+      {plan.isOverdue && <p className="notice error">The target date has passed. Review the goal deadline before relying on its monthly requirement; the duration below is a scenario estimate, not achievement of the expired deadline.</p>}
+      {plan.remainingAmount === 0 && <p className="notice success">Recorded goal savings already meet the target. No further saving is required for this goal; the scenario values below remain the returned calculation.</p>}
+      <div className="grid four">
+        <Metric label="Remaining goal amount" value={money(plan.remainingAmount)} icon="goals" />
+        <Metric label="Required monthly saving" value={money(plan.requiredMonthlySaving)} note={`Target ${date(plan.targetDate)}${plan.isOverdue ? " · Overdue" : ""}`} icon="goals" />
+        <Metric label="Available monthly saving" value={typeof plan.availableMonthlySaving === "number" ? money(plan.availableMonthlySaving) : "Not provided"} note="Before assumed spending reductions." />
+        <Metric label="Original monthly gap" value={money(plan.monthlySavingsGap)} note="Before assumed spending reductions." />
+        <Metric label="Projected monthly saving" value={money(plan.projectedMonthlySaving)} note="With the selected spending-reduction assumption." tone="highlight" />
+        <Metric label="Remaining monthly gap" value={money(plan.remainingMonthlyGap)} note={plan.remainingMonthlyGap === 0 ? "Projected saving meets the monthly requirement. Deadline feasibility is assessed separately." : "Additional monthly saving or spending reductions are still needed."} tone={plan.remainingMonthlyGap === 0 ? "success" : "expense"} />
+        <Metric label="Estimated saving time" value={plan.projectedMonthsToGoal === null ? "Not estimable" : `${plan.projectedMonthsToGoal} ${plan.projectedMonthsToGoal === 1 ? "month" : "months"}`} note={plan.projectedMonthsToGoal === null ? "No positive projected monthly saving in this scenario." : "Estimated months under this recorded-data scenario."} icon="planning" />
+        <Metric label="Feasible by target date" value={plan.feasibleByTargetDate ? "Yes" : "No"} note={plan.feasibleByTargetDate ? "The recorded-data scenario meets the deadline assumptions." : "Review the deadline and scenario notes."} tone={plan.feasibleByTargetDate ? "success" : "expense"} icon="planning" />
+      </div>
+      <p className="muted">The duration is an estimated number of months, not a guaranteed completion date. It is separate from the What-if Simulator&apos;s hypothetical calendar date.</p>
+    </section>
+    <section className="section-space" aria-labelledby="savings-plan-context">
+      <h3 id="savings-plan-context">Recorded context &amp; assumptions</h3>
+      {plan.period ? <p className="muted">Lookback: {date(plan.period.startDate)} to {date(plan.period.endDate)} · {plan.period.days} days · {plan.period.timeZone}</p> : <p className="muted">Lookback dates were not provided in this response.</p>}
+      <dl className="grid two">
+        <div className="row"><dt>Average monthly recorded income</dt><dd style={{ margin: 0 }}>{money(plan.averageMonthlyIncome)}</dd></div>
+        <div className="row"><dt>Average monthly recorded expenses</dt><dd style={{ margin: 0 }}>{money(plan.averageMonthlyExpenses)}</dd></div>
+        <div className="row"><dt>Monthly net cash flow</dt><dd style={{ margin: 0 }}>{typeof plan.monthlyNetCashFlow === "number" ? money(plan.monthlyNetCashFlow) : "Not provided"}</dd></div>
+        {plan.assumptions && <>
+          <div className="row"><dt>Spending reduction assumption</dt><dd style={{ margin: 0 }}>{plan.assumptions.spendingReductionPercent}%</dd></div>
+          <div className="row"><dt>Averaging month length</dt><dd style={{ margin: 0 }}>{plan.assumptions.averagingMonthDays} days</dd></div>
+        </>}
+      </dl>
+      {!plan.assumptions && <p className="muted">Calculation assumptions were not provided in this response.</p>}
+    </section>
+    <section className="section-space" aria-labelledby="savings-plan-categories">
+      <h3 id="savings-plan-categories">Potential category savings adjustments</h3>
+      <p className="muted">These suggested budgets use your selected reduction assumption. Review essential expenses before choosing any adjustment.</p>
+      {plan.categoryBudgets.length ? <div className="table-wrap"><table>
+        <caption className="muted">Monthly category amounts returned by the recorded-data Savings Plan</caption>
+        <thead><tr><th scope="col">Category</th><th scope="col">Recorded average monthly spending</th><th scope="col">Suggested monthly budget</th><th scope="col">Potential monthly saving</th></tr></thead>
+        <tbody>{plan.categoryBudgets.map(item => <tr key={item.categoryId}><th scope="row">{item.categoryName}</th><td>{money(item.averageMonthlySpending)}</td><td>{money(item.suggestedMonthlyBudget)}</td><td>{money(item.potentialMonthlySaving)}</td></tr>)}</tbody>
+      </table></div> : <Empty>No recorded expense categories were returned for this lookback.</Empty>}
+    </section>
+    <section className="section-space" aria-labelledby="savings-plan-notes">
+      <h3 id="savings-plan-notes">Scenario notes &amp; limitations</h3>
+      <p className="muted">This plan uses recorded activity. It is a scenario estimate, does not move money or guarantee future savings, and may omit unrecorded obligations.</p>
+      <Limitations items={plan.notes} />
+    </section>
+  </>;
+}
+
 export default function GoalDetail() {
   const { id } = useParams<{ id: string }>(), { request } = useAuth(), action = useAction();
   const [page, setPage] = useState(1), [plan, setPlan] = useState<SavingsPlan | null>(null), [version, setVersion] = useState(0);
@@ -35,6 +86,6 @@ export default function GoalDetail() {
         <section className="card form-panel"><p className="eyebrow">GOAL SETTINGS</p><h2>Edit goal</h2><form onChange={action.clear} onInvalidCapture={action.clear} key={goal.updatedAt} onSubmit={edit}><fieldset disabled={action.busy || !mutable}><Field label="Goal name"><input name="goalName" placeholder="e.g. Laptop Fund" required maxLength={200} defaultValue={goal.goalName} /></Field><Field label="Target amount (BDT)"><AmountInput name="targetAmount" placeholder="Enter target amount in BDT" value={goal.targetAmount} /></Field><Field label="Target date"><input name="targetDate" type="date" required defaultValue={goal.targetDate} /></Field><button type="submit">Save goal changes</button></fieldset></form></section></div>
       <section className="card section-space"><h2>Contribution history</h2><ResourceState {...history} />{history.data?.length === 0 && <Empty>No contributions yet.</Empty>}{history.data && history.data.length > 0 && <div className="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Source</th></tr></thead><tbody>{history.data.map(item => <tr key={item.contributionId}><td>{date(item.contributionDate)}</td><td>{money(item.amount)}</td><td>{item.transactionId ? "Linked recorded transaction" : "Manual allocation"}</td></tr>)}</tbody></table></div>}<Pagination page={page} meta={history.meta} change={setPage} /></section>
       <section className="card section-space"><h2>Your savings plan</h2><form onChange={() => { setPlan(null); action.clear(); }} onInvalidCapture={() => { setPlan(null); action.clear(); }} className="filters" onSubmit={event => { event.preventDefault(); const fields = new FormData(event.currentTarget); void action.run(async () => { setPlan((await request<SavingsPlan>(`/goals/${id}/savings-plan`, { method: "POST", body: { lookbackMonths: numeric(fields, "lookbackMonths"), spendingReductionPercent: numeric(fields, "spendingReductionPercent") } })).data); }, "Savings plan calculated."); }}><fieldset disabled={action.busy || goal.status !== "ACTIVE"} className="filters"><Field label="Lookback months"><input name="lookbackMonths" type="number" min={1} max={12} defaultValue={3} required /></Field><Field label="Spending reduction (%)"><input name="spendingReductionPercent" type="number" min={0} max={50} step="0.1" defaultValue={10} required /></Field><button type="submit">Calculate savings plan</button></fieldset></form>
-        {plan && <><div className="grid three"><Metric label="Monthly savings gap" value={money(plan.monthlySavingsGap)} /><Metric label="Projected monthly saving" value={money(plan.projectedMonthlySaving)} /><Metric label="Feasible by target date" value={plan.feasibleByTargetDate ? "Yes" : "No"} /></div><div className="table-wrap"><table><thead><tr><th>Category</th><th>Monthly spending</th><th>Suggested budget</th></tr></thead><tbody>{plan.categoryBudgets.map(item => <tr key={item.categoryId}><td>{item.categoryName}</td><td>{money(item.averageMonthlySpending)}</td><td>{money(item.suggestedMonthlyBudget)}</td></tr>)}</tbody></table></div><Limitations items={plan.notes} /></>}</section>
+        {plan && <SavingsPlanResult plan={plan} />}</section>
     </>}</>;
 }

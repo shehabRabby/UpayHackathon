@@ -8,5 +8,5 @@ export function PublicHero({ eyebrow, title, description, children }: { eyebrow:
   return <section className="route-hero"><div className="container"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p>{children}</div></section>;
 }
 export function FinalCta() {
-  return <section className="container final-cta"><div><p className="eyebrow">YOUR NEXT MOVE STARTS HERE</p><h2>Build better financial habits,<br />one decision at a time.</h2><p>Record your activity. Understand your options. Make a plan.</p></div><PublicActions dashboardLabel="Open dashboard" signupLabel="Create an account" /></section>;
+  return <section className="container final-cta"><div><p className="eyebrow">YOUR GOAL. YOUR PURCHASE. YOUR DECISION.</p><h2>Plan your savings.<br />Check your purchase.</h2><p>Start with recorded activity. Review the saving pace or purchase assessment, with optional multilingual guidance.</p></div><PublicActions dashboardLabel="Open dashboard" signupLabel="Create an account" /></section>;
 }

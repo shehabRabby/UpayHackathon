@@ -2,16 +2,54 @@ import { PublicPage } from "@/components/public-page";
 import { PublicActions } from "@/components/public-layout";
 import { ProductIcon } from "@/components/brand";
 import { ChatPreview, GoalPreview, TransactionPreview, PlanningPreview } from "@/components/public-previews";
-const steps = [
- ["profile","Create an account","Sign up with the supported name, email and password fields. Confirm your email when required, then sign in to your private workspace.","Account → Sign in → Private workspace"],
- ["transactions","Record financial activity","Add income and expenses with amounts, categories and dates. Merchant names and notes help keep entries meaningful.","Income + Expenses + Categories"],
- ["dashboard","View the dashboard","Scan recorded balance, monthly income and expenses, goal savings and cash flow. These values describe your records, not a wallet balance.","Balance · Income · Expenses · Goal savings"],
- ["analytics","Understand spending","Choose the default or custom analytics period. Review categories and monthly patterns; save insights and illustrative wellness assessments when useful.","Period → Categories → Monthly patterns"],
- ["goals","Create a savings goal","Give the goal a name, target amount and future target date. Record any already-saved amount within the target.","Goal name + Target amount + Target date"],
- ["goals","Contribute and track","Record contributions, then review saved and remaining amounts and progress. Pause/resume an active plan when your priorities change.","Saved → Remaining → Progress"],
- ["planning","Test a savings plan","Enter hypothetical income, expenses, desired saving and a horizon in the simulator. Review projected savings and goal completion estimates where available.","Monthly scenario → Timeline → Projection"],
- ["shield","Check affordability","Enter a potential purchase amount, select a goal if relevant and choose an emergency buffer. Review the assessment and its limitations before deciding.","Purchase + Recorded context → Assessment"],
- ["coach","Ask your AI financial coach","Start a conversation in English, বাংলা or Banglish. Ask about recorded spending and goals, review guidance and keep useful recommendations.","Your question → Contextual guidance → Your decision"],
+
+const journeys = [
+  {
+    id: "savings-journey",
+    title: "Journey A — Plan a savings goal",
+    description: "Use recorded activity to understand the required saving pace and deadline feasibility. Explore a hypothetical scenario separately if you want to compare assumptions.",
+    steps: [
+      { icon: "transactions", title: "Start with recorded financial activity", text: "Manually record income and expenses, including MFS-style cash in, cash out, merchant payments and recharge. Review dashboard and spending context; these entries are not synchronized wallet data.", preview: "Recorded income + Expenses + Dates", visual: <TransactionPreview /> },
+      { icon: "goals", title: "Create or select a savings goal", text: "Set a target amount and date, record saved amounts and contributions, then review what remains and the required monthly saving pace. Pause/resume eligible goals when priorities change.", preview: "Target + Saved → Remaining + Monthly requirement", visual: <GoalPreview /> },
+      { icon: "goals", title: "Generate the recorded-data Savings Plan", text: "In Goal Details, generate a Savings Plan with a recorded-activity lookback and a spending-reduction assumption. Review the monthly savings gap, category budgets, projected monthly saving and whether that pace appears feasible by the target date. The backend calculates this plan; the result depends on recorded history and assumptions.", preview: "Recorded activity → Gap + Budgets + Deadline feasibility", visual: null },
+      { icon: "planning", title: "Optionally explore a hypothetical What-if", text: "In the separate What-if Simulator, enter hypothetical monthly income, expenses, desired saving and a horizon. Select a goal to see completion time and date estimates where possible. These scenario estimates are separate from the recorded-data plan and do not change your records.", preview: "Hypothetical inputs → Savings + Timeline estimates", visual: <PlanningPreview /> },
+      { icon: "coach", title: "Optionally discuss the goal context", text: "Ask the AI Coach about recorded spending and your selected goal in English, বাংলা or Banglish. Review its illustrative guidance and keep useful recommendations. Coaching supports understanding; it does not calculate or replace the Savings Plan.", preview: "Optional question → Multilingual guidance", visual: <ChatPreview /> },
+    ],
+  },
+  {
+    id: "purchase-journey",
+    title: "Journey B — Check a purchase",
+    description: "Assess a planned amount using recorded cash flow, saved goal funds and an emergency-buffer assumption. A savings goal is optional for this journey.",
+    steps: [
+      { icon: "transactions", title: "Review your records and enter a purchase", text: "Keep recorded income, expenses and goal contributions current, then enter the planned purchase amount in the affordability tool. The assessment uses this recorded context, not a verified wallet balance.", preview: "Recorded activity + Planned purchase amount", visual: <TransactionPreview /> },
+      { icon: "goals", title: "Choose a buffer and optional active goal", text: "Choose the emergency-buffer horizon. Saved funds in all non-cancelled goals are always reserved, including paused and completed goals. Selecting an ACTIVE goal adds a check of its required monthly saving pace; it does not switch other goal reserves on or off.", preview: "Emergency-buffer assumption + Optional ACTIVE goal", visual: null },
+      { icon: "shield", title: "Review the calculated affordability assessment", text: "Read the deterministic verdict alongside reserved goal savings, the emergency buffer and available amount. Check the recorded-data limitations, including missing income or expenses. Backend calculations determine the verdict; it is decision support, not a guarantee or payment instruction.", preview: "Recorded context → Verdict + Reserves + Available amount", visual: <PlanningPreview affordability /> },
+      { icon: "coach", title: "Optionally request a multilingual explanation", text: "Enable the optional explanation in English, বাংলা or Banglish when you want guidance on the calculated purchase assessment. AI explains the result without changing its verdict, moving money or recording a purchase. You make the final decision.", preview: "Calculated assessment → Optional explanation", visual: null },
+    ],
+  },
 ];
-const visuals = [null, <TransactionPreview key="transactions" />, null, null, <GoalPreview key="goal" />, null, <PlanningPreview key="plan" />, <PlanningPreview affordability key="purchase" />, <ChatPreview key="chat" />];
-export default function HowItWorks(){return <PublicPage><section className="workflow-hero container"><p className="eyebrow">YOUR FIRST VISIT, EXPLAINED</p><h1>Your records. A practical path forward.</h1><p>Nine steps through the actual application. Start small, explore the context, then return to the tools as your circumstances change.</p><div className="workflow-key"><span>01 Account</span><ProductIcon name="arrow" /><span>09 AI Coach</span></div></section><div className="workflow-timeline container">{steps.map(([icon,title,text,preview],index) => <section className="workflow-step" data-workflow-step key={title}><div className="timeline-number">{String(index+1).padStart(2,"0")}</div><div className="timeline-copy"><p className="eyebrow">{index < 3 ? "BUILD YOUR CONTEXT" : index < 6 ? "UNDERSTAND & SET A TARGET" : "EXPLORE YOUR NEXT MOVE"}</p><h2>{title}</h2><p>{text}</p></div>{visuals[index] ? <div className="timeline-visual">{visuals[index]}</div> : <div className="step-preview"><ProductIcon name={icon} /><strong>{preview}</strong><small>Workflow preview · No action performed</small></div>}</section>)}</div><section className="container workflow-finish"><p className="eyebrow">A ROUTINE, NOT A ONE-TIME REPORT</p><h2 className="workflow-loop">{["Record", "Understand", "Plan", "Ask AI", "Improve"].map((label,index) => <span key={label}>{index > 0 && <i aria-hidden="true">↓</i>}{label}</span>)}</h2><p>Ready to try the workflow? Keep your context current and revisit the tools as your records grow.</p><PublicActions signupLabel="Create an account" dashboardLabel="Continue in your dashboard" /></section></PublicPage>;}
+
+export default function HowItWorks() {
+  return <PublicPage>
+    <section className="workflow-hero container">
+      <p className="eyebrow">TWO CUSTOMER JOURNEYS</p>
+      <h1>Plan the saving pace.<br />Check the purchase fit.</h1>
+      <p>Create an account and sign in; confirm email when required. Then record financial activity and choose the decision you want to explore. Both journeys work without AI.</p>
+      <div className="workflow-key"><span>Savings planning</span><ProductIcon name="arrow" /><span>Purchase affordability</span></div>
+    </section>
+    {journeys.map(journey => <section className="container" aria-labelledby={journey.id} key={journey.id}>
+      <div className="section-heading"><p className="eyebrow">CHOOSE THE DECISION YOU NEED</p><h2 id={journey.id}>{journey.title}</h2><p>{journey.description}</p></div>
+      <div className="workflow-timeline">{journey.steps.map((step,index) => <section className="workflow-step" data-workflow-step key={step.title}>
+        <div className="timeline-number">{String(index+1).padStart(2,"0")}</div>
+        <div className="timeline-copy"><p className="eyebrow">{journey.id === "savings-journey" ? "SAVINGS PLANNING" : "PURCHASE AFFORDABILITY"}</p><h2>{step.title}</h2><p>{step.text}</p></div>
+        {step.visual ? <div className="timeline-visual">{step.visual}</div> : <div className="step-preview"><ProductIcon name={step.icon} /><strong>{step.preview}</strong><small>Workflow preview · No action performed</small></div>}
+      </section>)}</div>
+    </section>)}
+    <section className="container workflow-finish">
+      <p className="eyebrow">RETURN AS YOUR RECORDS CHANGE</p>
+      <h2 className="workflow-loop">{["Record", "Plan savings", "Check a purchase", "Review context", "Optional explanation"].map((label,index) => <span key={label}>{index > 0 && <i aria-hidden="true">↓</i>}{label}</span>)}</h2>
+      <p>Keep your records current, revisit the relevant decision and review the assumptions before acting.</p>
+      <PublicActions signupLabel="Create an account" dashboardLabel="Continue in your dashboard" />
+    </section>
+  </PublicPage>;
+}

@@ -147,8 +147,11 @@ export type Health = {
   limitations?: string[];
 };
 export type SavingsPlan = Goal & {
+  period: Spending["period"];
   averageMonthlyIncome: number;
   averageMonthlyExpenses: number;
+  monthlyNetCashFlow: number;
+  availableMonthlySaving: number;
   monthlySavingsGap: number;
   projectedMonthlySaving: number;
   remainingMonthlyGap: number;
@@ -162,6 +165,10 @@ export type SavingsPlan = Goal & {
     potentialMonthlySaving: number;
   }[];
   notes: string[];
+  assumptions: {
+    spendingReductionPercent: number;
+    averagingMonthDays: number;
+  };
 };
 export type Simulation = {
   projectedMonthlySaving: number;
@@ -189,6 +196,10 @@ export type Affordability = {
   averageMonthlyExpenses: number;
   monthlyNetCashFlow: number;
   selectedGoalMonthlyRequirement: number;
+  period: Spending["period"];
+  assumptions: {
+    emergencyBufferMonths: number;
+  };
   limitations: string[];
   explanation: string | null;
 };

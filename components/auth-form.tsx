@@ -81,14 +81,14 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
   }
   return (
     <><PublicHeader /><main id="main-content" className="auth-page">
-      <section className="auth-story"><Brand /><p className="eyebrow">YOUR MONEY. A SMARTER PLAN.</p><h2>{signup ? <>A purposeful start.<br /><span>For your financial goals.</span></> : <>Your smarter<br /><span>financial companion.</span></>}</h2><p>One private workspace to understand your records, build savings goals and explore your next decision.</p><ul className="feature-list"><li><ProductIcon name="analytics" /> Understand your spending</li><li><ProductIcon name="goals" /> Build purposeful savings goals</li><li><ProductIcon name="planning" /> Plan major decisions</li><li><ProductIcon name="coach" /> Get multilingual AI-assisted guidance</li></ul><div className={'auth-graphic'} aria-hidden={true}><span /><span /><span /><span /><span /><span /></div><p className={'auth-scope'}>Recorded financial data. No live Upay wallet connection.</p></section>
+      <section className="auth-story"><Brand /><p className="eyebrow">SAVINGS PLANNING. PURCHASE DECISIONS.</p><h2>{signup ? <>Plan your savings.<br /><span>Check your purchase.</span></> : <>Return to your goals.<br /><span>Review your next purchase.</span></>}</h2><p>Use recorded financial activity to review a savings plan and assess a planned purchase, with optional multilingual AI guidance.</p><ul className="feature-list"><li><ProductIcon name="analytics" /> Review recorded financial context</li><li><ProductIcon name="goals" /> Understand your required saving pace</li><li><ProductIcon name="planning" /> Check purchase affordability</li><li><ProductIcon name="coach" /> Choose optional multilingual guidance</li></ul><div className={'auth-graphic'} aria-hidden={true}><span /><span /><span /><span /><span /><span /></div><p className={'auth-scope'}>Recorded financial data. No live Upay wallet connection.</p></section>
       <section className="card auth-card">
-        <p className="eyebrow">{signup ? "YOUR FIRST STEP TOWARD CLARITY" : "A LITTLE CLARITY GOES A LONG WAY"}</p>
+        <p className="eyebrow">{signup ? "START WITH YOUR RECORDED ACTIVITY" : "REVISIT YOUR PLAN AND PURCHASE CHECK"}</p>
         <h1>{signup ? "Create your account" : "Welcome back"}</h1>
         <p>
           {signup
-            ? "Start tracking your finances and building a savings plan."
-            : "Sign in to your recorded finances and goals."}
+            ? "Record financial activity to plan a savings goal and check a purchase."
+            : "Sign in to review your savings plan and assess a planned purchase."}
         </p>
         {!auth.client && (
           <Notice error="Public Supabase authentication configuration is unavailable. Check the server configuration." />

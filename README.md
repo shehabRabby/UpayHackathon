@@ -1,8 +1,8 @@
 # Upay AI Financial Coach
 
-**Understand your money. Plan your next move.**
+**Plan your savings. Check your purchase.**
 
-A full-stack financial coaching prototype combining recorded transactions, savings goals, spending analytics, financial planning, and multilingual AI guidance in one personal workspace.
+An AI-assisted financial decision-support prototype for customers, focused on goal-based savings planning and purchase affordability using recorded financial activity.
 
 **[Explore the live application](https://upay-ai-hackathon.vercel.app/)** · [Local setup](#local-development-setup) · [API reference](#api--backend-endpoints) · [Deployment guide](DEPLOYMENT.md)
 
@@ -10,11 +10,18 @@ A full-stack financial coaching prototype combining recorded transactions, savin
 
 ## Overview
 
-Financial records become useful when people can turn them into understandable decisions. Upay AI Financial Coach helps users review recorded income and expenses, understand spending patterns, work toward savings goals, and explore purchases or savings scenarios before acting.
+**Target persona: Customer only.** Public pages introduce the two decision journeys; authentication opens the customer's recorded financial context. Signing in does not establish verified Upay customer status.
 
-The platform combines deterministic financial calculations with AI-assisted explanations. Calculations stay in backend code; the coach receives selected, precomputed context and provides qualitative guidance. Bangladesh-focused use is supported through BDT amounts, Asia/Dhaka date handling, and English, Bangla, and Banglish coaching.
+The core outcomes are:
 
-The intended audience includes individuals learning to manage everyday finances and evaluators exploring an end-to-end fintech prototype. Public pages introduce the product; authentication opens a user-specific workspace.
+1. **Goal-Based Savings Planning:** review remaining savings and required monthly pace, generate a Goal Details Savings Plan from recorded activity, and review the monthly gap, spending budgets, projected monthly saving and deadline feasibility. A separate hypothetical What-if Simulator provides scenario savings and completion estimates where possible.
+2. **Purchase Affordability Assessment:** assess a planned amount against recorded cash flow, saved goal funds and an emergency-buffer assumption. Saved amounts in all non-cancelled goals are always reserved; optionally selecting an ACTIVE goal adds its required monthly saving-pace check.
+
+Recorded transactions, dashboard and spending analytics, authenticated account access, and optional multilingual AI coaching support these outcomes. Illustrative financial wellness and profile housekeeping remain secondary utilities. Backend deterministic calculations are authoritative; the coach receives selected, precomputed context for qualitative guidance, and optional purchase explanations describe an already calculated assessment.
+
+The prototype is designed for an MFS-oriented customer context: BDT, Asia/Dhaka dates, manually recorded cash in, cash out, merchant payments and recharge, and English, Bangla and Banglish coaching. Recording an activity does not execute it, synchronize a wallet or verify available wallet funds.
+
+The design hypothesis is that clearer saving-pace and purchase context can support these decisions. There are currently no verified customer interviews or validated demand findings, and no claim of superiority over generic budgeting tools.
 
 ## Key features
 
@@ -31,7 +38,7 @@ The intended audience includes individuals learning to manage everyday finances 
 | AI coach | Create/delete conversations, load paginated history, select a language/optional goal, receive structured coaching, and persist recommendations. |
 | Recommendations | Priority/status display and backend-enforced mark-read, complete, or dismiss transitions. |
 | Savings planning | Goal-specific spending-reduction plans and a hypothetical what-if savings simulator. |
-| Affordability | Recorded-data purchase assessment, emergency-buffer assumptions, optional goal protection, and optional AI explanation. |
+| Affordability | Recorded-data purchase assessment, emergency-buffer assumptions, saved-fund reserves for all non-cancelled goals, an optional selected ACTIVE-goal monthly saving-pace check, and optional AI explanation. |
 | Profile | Update full name, phone, and preferred language; email comes from Supabase Auth. |
 | Presentation | Responsive public pages/workspace, custom financial visuals, accessible password visibility controls, and reduced-motion-aware effects. |
 
@@ -438,14 +445,25 @@ npm start
 
 ## Application workflow
 
-1. Create an account/sign in; confirm email if the Supabase project requires it.
-2. Open Dashboard and record income/expenses in Transactions.
-3. Review Analytics; optionally save an insight/wellness assessment.
-4. Create a savings goal, record contributions, and track progress.
-5. Explore a goal savings plan or What-if Simulator scenario.
-6. Check affordability; leave optional AI explanation off to preserve quota.
-7. Intentionally submit a coach question in English, Bangla, or Banglish with optional goal context.
-8. Review guidance and mark recommendations read/completed/dismissed.
+Create an account/sign in and confirm email if the Supabase project requires it. Manually record financial activity in Transactions; Dashboard and Analytics provide supporting context, not a live wallet balance.
+
+### Journey A — Plan a savings goal
+
+1. Create or select a goal, record saved amounts/contributions, and review remaining savings and the required monthly saving pace.
+2. In Goal Details, generate the **recorded-data Savings Plan** with a lookback and spending-reduction assumption.
+3. Review the monthly savings gap, category budgets, projected monthly saving and feasibility by the goal's target date. These results depend on the recorded activity and selected assumptions.
+4. Optionally use the separate **hypothetical What-if Simulator** with scenario income, expenses, desired savings and a horizon; selecting a goal enables completion time/date estimates where possible. This is a separate calculation and does not change records.
+5. Optionally ask the multilingual coach about recorded spending and selected goal context. Coaching does not calculate or replace the Savings Plan.
+
+### Journey B — Check a purchase
+
+1. Review recorded income, expenses and goal contributions, then enter the planned purchase amount.
+2. Choose an emergency-buffer horizon. Saved funds in **all non-cancelled goals**, including paused/completed goals, are reserved even without selecting a goal.
+3. Optionally select an **ACTIVE goal** to also check its required monthly saving pace.
+4. Review the deterministic verdict, reserved goal savings, emergency buffer, available amount and recorded-data limitations. The assessment is not a guarantee or a payment instruction.
+5. Optionally request an English, Bangla or Banglish explanation of the calculated assessment; explanation is off by default and does not change the verdict.
+
+Both journeys work without AI. When coaching is useful, intentionally submit a question, review the guidance, and mark recommendations read/completed/dismissed as appropriate. Analytics insights, illustrative wellness history and profile preferences remain available as supporting or secondary utilities.
 
 ## Security & privacy
 
