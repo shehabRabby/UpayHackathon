@@ -296,6 +296,59 @@ Source configuration uses the Google Gemini Developer API via @google/genai, def
 
 Structured output is followed by strict parsing and validation. Bengali-block characters in Banglish message or recommendation text cause rejection without automatic regeneration. Diagnostic logging records sanitized stages/status rather than full prompts, financial records or credentials.
 
+## 9.1 Actual AI responsibility and pipeline
+
+Recorded transactions and goal records feed deterministic backend calculations. For chat, lib/coach-context.ts prepares a 90-day structured summary: income/expense/net averages, positive saving capacity, counts, goal totals, up to five spending categories, and optional selected-goal remaining amount, monthly requirement, status/deadline. Account IDs, contact fields, merchants and transaction descriptions are omitted. The route adds up to six recent messages capped at 2,000 characters each; user text can still disclose private data.
+
+lib/gemini.ts serializes backendMetrics, recentConversation and userMessage as one user-content JSON payload, with a separate system instruction. That instruction treats user/history/category text as untrusted, prohibits arithmetic/invented financial facts, requests qualitative recommendations and routes missing numerical requests to calculation tools. The model has no database or tool access.
+
+The SDK response is parsed as JSON, checked against the strict coachResponse schema, and passed through assertCoachLanguage. The schema requires a nonempty bounded message and zero to three recommendations with SAVING/BUDGET/GOAL/EMERGENCY types, LOW/MEDIUM/HIGH priorities and bounded nonempty text. Accepted chat turns and recommendations are stored atomically. For optional purchase explanation, the route sends the full precomputed assessment and returns only answer.message without chat/recommendation persistence. The prompt requests no recommendations in this branch; the common schema does not enforce that purpose-specific rule.
+
+Financial responsibility stays in deterministic savings, affordability/verdict, analytics, wellness and simulator code. Generative responsibility is explanatory prose, coaching, qualitative recommendations and requested language presentation. General chat has no calculated purchase assessment or complete Savings Plan gap, feasibility or timeline. It cannot be presented as the affordability engine or an integrated full-plan explainer. Default model/configuration above describe source settings, not fresh provider availability or the deployed override.
+
+## 9.2 Reproducible offline AI evaluation
+
+Run `npm.cmd test -- tests/ai-evaluation.test.ts`. tests/fixtures/ai-evaluation.ts contains nine fixed synthetic cases: positive cash flow, a goal monthly saving shortfall, AFFORDABLE, CAUTION, NOT_AFFORDABLE, INSUFFICIENT_DATA, zero/limited expenses, overdue goal and fully funded goal. Financial facts are supplied snapshots; the suite does not retest or replace financial formulas.
+
+tests/ai-evaluation.test.ts exercises the real Gemini SDK request builder and production parsing/validators using injected synthetic replies and credentials. Global fetch is blocked and asserted unused. The candidates are authored examples, not live or cached Gemini generations. Checks cover exact fact serialization, schema limits, three same-fact language conditions, invalid/empty output, script leakage, injection separation and explicit semantic counterexamples. Existing route tests separately cover a fixed backend purchase verdict and no explanation persistence.
+
+**Evidence boundary:** an offline pass demonstrates application request/validation behavior with the supplied fixtures. It does not measure Gemini factual accuracy, recommendation usefulness, language fluency, live availability, latency/cost, customer benefit or prompt-injection resistance. No production prompt/provider/validator, public API, financial rule or database behavior is changed. No automated semantic detector is installed.
+
+## 9.3 Factual, language and recommendation review
+
+The following is a **proposed human evaluation rubric**, not scored results. Future review should use authorized model outputs paired with their exact fact snapshot, case ID, language, model/configuration, prompt revision and generation date. Fluent reviewers should record meets / needs revision / fails per dimension, retain supporting excerpts, and resolve disagreements. Report actual sample sizes and denominators only after review.
+
+| Dimension | Review criterion |
+| --- | --- |
+| Numerical/factual consistency | Every stated amount, goal remaining value, required monthly saving, available purchase amount, verdict, status and date agrees with supplied facts. Missing figures are identified rather than calculated or invented. |
+| Financial distinctions | Recorded balance differs from available purchase funds; hypothetical after-purchase cash flow does not deduct reserves. Goal savings do not prove liquid emergency cash. Zero recorded expenses do not prove complete history. |
+| Unsupported claims | No live wallet access, verified funds, guaranteed safety/returns, invented forecasts or financial-independence claims. Overdue/funded/data-insufficient states retain their limitations. |
+| Language quality | English in en; Bengali-script Bangla in bn; natural transliterated Bangla in banglish. Review fluency and comprehension, including recommendation text, rather than only script presence. |
+| Recommendation usefulness | Relevance to the supplied context; a practical action; agreement with facts; no unsupported claims/numerical targets; a clear connection to the savings/purchase decision; appropriate category and priority. |
+
+The current language validator imposes no automatic detector for English/Bangla. Banglish rejects Bengali-block U+0980–U+09FF characters in message and every recommendation, but permits other scripts and does not prove natural Banglish. The offline suite explicitly documents these limitations. Structured recommendation validity likewise does not establish usefulness; no human recommendation evaluation has been performed.
+
+Seven deliberately unsafe prose fixtures contradict verdicts, goal remaining/required saving or available amounts, conflate balance with available funds, invent live wallet access, verify emergency liquidity without evidence, or promise a completion date. Another gives an invented numerical target inside an otherwise valid recommendation. They are intentionally accepted by the current schema in offline tests, demonstrating the unresolved semantic risk. They must fail the human rubric; they are not examples of approved guidance. Robust multilingual semantic checking requires further evaluation rather than a brittle production regex.
+
+Injection cases attempt to override a verdict, reveal hidden instructions/credentials, invent a balance, claim live Upay access and ignore context through a category label. Tests verify that the separate system instruction is unchanged, the malicious strings remain untrusted JSON data and the supplied deterministic facts are preserved. They do not demonstrate that Gemini obeys the instruction. Prompt text can still mislead the generated prose, even while the API's financial verdict remains independently calculated. Complete prompt-injection immunity is not claimed.
+
+## 9.4 Calculation-only versus AI-assisted protocol
+
+| Proposed condition | Presentation |
+| --- | --- |
+| Calculation-only baseline | Existing deterministic purchase figures, verdict, assumptions and limitation notes. |
+| AI-assisted | The identical frozen purchase snapshot plus optional Gemini explanation in English, Bangla or Banglish. The verdict and numbers cannot differ between conditions. |
+
+A future consented study would use equivalent tasks and randomize/counterbalance condition order to account for practice effects. Use the same fact/answer key for each case in both conditions and record explanation provenance. Measure correct interpretation rate, elapsed time to correct understanding, interpretation errors, anchored usefulness ratings and confidence/comprehension separately. Capture language preference and reasons; preference or increased confidence does not establish factual accuracy. Keep failed tasks in reporting. Compare authorized generated explanations only when separately permitted; the current authored offline fixtures are not Gemini-quality samples.
+
+Savings-plan comprehension remains the other primary customer outcome. Its complete result is not currently passed to Gemini, so this controlled same-result AI comparison uses the existing purchase-explanation path. General Coach can discuss selected-goal facts and produce recommendations as a separate supporting task. No user-study or before/after AI benefit results exist.
+
+## 9.5 Predictive ML status and future requirements
+
+**Predictive ML is not part of the current validated prototype.** Inspection found no predictive training pipeline, trained predictive artifact or suitable labeled historical dataset. Deterministic projections, wellness, savings and affordability are not ML; no fake model, synthetic-label benchmark, training result or MAE/RMSE/classification score is presented.
+
+Future predictive work must first define a useful target and obtain an appropriate consented/anonymized historical dataset. Separate train/validation/test data with an unseen holdout, respecting time order and customer grouping; choose simple baselines; check feature/label and temporal leakage; and assess privacy, representation and fairness. Evaluate forecasting with held-out MAE/RMSE and suitable uncertainty analysis, or risk prediction with classification and calibration metrics against an appropriate baseline. A small synthetic fixture set cannot establish predictive performance. This future work does not alter the current two-outcome prototype.
+
 # 10. Important Financial Calculations
 
 The following formulas are verified against lib/finance.ts, lib/analytics.ts, lib/financial-health.ts, lib/savings-plan.ts and lib/projections.ts. BDT values are normally returned to two decimal places. A 30-day averaging month used by analytics differs from the deadline month approximation used for goal requirements.

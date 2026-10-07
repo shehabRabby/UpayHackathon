@@ -814,7 +814,7 @@ for (const width of [320, 375, 390, 768, 1024, 1280, 1440]) {
       await page.goto(path);
       await expect(
         path === "/missing-page"
-          ? page.getByRole("heading", { name: "404", exact: true })
+          ? page.getByRole("heading", { name: "Page not found", exact: true })
           : page.locator("main"),
       ).toBeVisible();
       await expect(page.locator(".loading")).toHaveCount(0);

@@ -101,6 +101,38 @@ Quotas and availability depend on the configured Google project; no fixed free-t
 
 **Privacy boundary:** Coaching sends the submitted message, limited history, and minimized financial context to Google. Avoid passwords, payment credentials, and unnecessary sensitive details. AI output may be inaccurate and is not guaranteed financial, lending, or investment advice.
 
+### AI responsibility and context boundary
+
+```text
+Recorded activity + selected goal → deterministic coaching summary + limited history
+  → Gemini → JSON/Zod + Banglish script validation → coaching and recommendations
+Calculated affordability assessment → Gemini only on explicit opt-in
+  → the same validators → explanation text alongside the unchanged assessment
+```
+
+`lib/coach-context.ts` supplies 90-day averages, saving capacity, goal totals, up to five spending categories and optional selected-goal facts. It excludes account/contact identifiers, merchant names and transaction descriptions; submitted messages/history can still contain private information. General chat receives no calculated purchase verdict or full Savings Plan gap/feasibility/timeline. The affordability route supplies its complete calculated assessment instead. Chat output is stored atomically; purchase explanation text is returned without chat/recommendation persistence. Gemini has no database or tool access in this integration.
+
+### Offline AI evaluation
+
+Run `npm.cmd test -- tests/ai-evaluation.test.ts`. The [suite](tests/ai-evaluation.test.ts) uses the real SDK request builder with an injected synthetic transport, synthetic credentials and a failing global-network fallback. The [fixed cases](tests/fixtures/ai-evaluation.ts) cover positive cash flow, a goal saving shortfall, all four purchase verdicts, limited/zero expenses, an overdue goal and a funded goal. Candidate replies are authored fixtures, not sampled Gemini output or training data.
+
+The tests check exact fact serialization, authoritative prompt placement, same-result language conditions, strict message/recommendation schemas, invalid output and Banglish leakage. Injection attempts remain user/history/category data rather than changing system rules. Counterexamples intentionally show that contradictory amounts/verdicts, invented targets, wallet claims and false liquidity/forecast claims can pass schema validation. Prompt separation does not prove model resistance; no production semantic detector is added.
+
+English/Bangla are requested by the prompt without an automatic language detector. Banglish validation rejects U+0980–U+09FF in both message and recommendation text; it does not establish natural Banglish, fluency or Latin-only text across other scripts. The empty-recommendation rule for purchase explanations is a prompt instruction; the route uses only explanation text.
+
+**Proposed human review:** assess factual consistency, correct recorded-versus-available/reserve distinctions, unsupported claims and language quality. Review recommendation relevance, actionability, supplied-fact consistency, unsupported claims, relation to the saving/purchase decision, and category/priority appropriateness. No human usefulness rating, factual-accuracy score or live-model quality result is established.
+
+| Future comparison condition | Customer sees |
+| --- | --- |
+| Calculation-only | The existing deterministic result, figures, assumptions and limitation notes; no AI explanation. |
+| AI-assisted | The exact same frozen result plus optional English/Bangla/Banglish purchase explanation, subject to generative errors. General Coach recommendations are a separate capability, not part of this purchase explanation. |
+
+A proposed counterbalanced study measures interpretation accuracy, time, errors, rated explanation usefulness, confidence/comprehension and language preference. Preference or confidence alone does not prove accuracy. See the [AI review rubric and comparison protocol](FINAL_PROJECT_REPORT.md#93-factual-language-and-recommendation-review). No comparison results are claimed; the complete Savings Plan result is not currently passed to AI.
+
+### Predictive ML status
+
+**Predictive ML is not part of the current validated prototype.** No predictive training pipeline, trained model artifact or suitable labeled dataset was found. Savings, affordability, wellness and simulation are deterministic calculations, not ML. Future work requires a consented/anonymized historical dataset, a defined target, train/validation/test splits with an unseen holdout, simple baselines, leakage checks, and privacy/fairness review. Forecasting needs held-out MAE/RMSE; a risk classifier needs suitable classification and calibration metrics. No training results or predictive-performance claims are supplied.
+
 ## System architecture
 
 ```text
