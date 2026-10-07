@@ -54,9 +54,9 @@ Figure 1. Public landing page introducing the prototype and account entry points
 
 # 4. Objectives, Scope & Requirements
 
-The main objective is to turn user-recorded financial activity into understandable analysis, trackable savings goals and informed planning scenarios, supported by multilingual AI guidance.
+The primary customer objectives are savings plan clarity and purchase decision clarity: expose the required saving pace, scenario gap and feasibility, then assess a planned purchase with recorded cash flow, saved-goal reserves and an estimated emergency buffer. Multilingual AI guidance provides optional supporting explanation. Whether these outputs improve customer understanding or behavior remains to be validated.
 
-Specific objectives are to maintain an owned financial record, calculate transparent summaries, support goal contributions and deadlines, compare saving and purchase scenarios, and retain coaching conversations and actionable recommendations. Intended users include individuals learning to manage everyday finances and hackathon evaluators reviewing a complete fintech prototype.
+Supporting objectives are to maintain an owned financial record, calculate transparent summaries, support goal contributions and deadlines, compare saving and purchase scenarios, and retain coaching conversations and recommendations. The intended persona is Customer only, in an MFS-oriented recorded-data context. Account access does not verify Upay-customer status or link a live wallet; evaluators review the prototype rather than form a separate product persona.
 
 Table 1. Compact requirements and implementation scope.
 
@@ -381,7 +381,56 @@ There is no versioned Prisma migration history in the repository. Fresh database
 
 # 13. Results, Limitations & Future Scope
 
-The prototype implements a connected journey from manual financial activity to dashboard summaries, savings tracking, analytics, planning and multilingual guidance. Deterministic services expose assumptions and reproducible results, while persisted conversations and recommendation actions support follow-through. Responsive pages, desktop sidebar collapse and recovery/loading interfaces improve workspace usability. The observed mocked test suite provides regression evidence for implemented behavior, rather than a guarantee of production reliability.
+The prototype's two primary customer outcomes are savings plan clarity and purchase decision clarity. Stages 1–3 expose the saving pace, gap, feasibility and duration alongside a reserve-aware purchase assessment. Records, analytics and optional multilingual guidance support these decisions. The observed mocked test suite provides regression evidence for implementation behavior; it does not establish customer comprehension, behavioral improvement or business impact.
+
+## 13.1 Customer impact and validation
+
+**Customer-impact framing update: 7 October 2026.** This section distinguishes implemented product outputs, proposed customer success metrics and actual validated impact. Earlier technical verification entries remain historical; they are not customer-study results.
+
+### Implemented measurable product outputs
+
+| Primary customer outcome | Customer question | Outputs already calculated and displayed |
+| --- | --- | --- |
+| Savings plan clarity | Can I understand the saving pace required for my goal and whether the current recorded-data scenario appears feasible? | Remaining goal amount; required, available and projected monthly saving; remaining monthly gap; deadline feasibility; estimated months to goal; potential category spending adjustments. |
+| Purchase decision clarity | Can I understand whether a planned purchase fits my recorded financial situation while accounting for goal savings and an emergency buffer? | Planned purchase; recorded cash-flow balance; saved-goal reserves; estimated buffer; available purchase amount; recent monthly net cash flow; selected ACTIVE-goal monthly requirement; deterministic affordability verdict. |
+
+These figures are conditional recorded-data outputs. Goal savings are recorded allocations, not verified money held aside; the buffer is an expense-based estimate. A null completion duration is not estimable, and a zero monthly gap does not by itself establish deadline feasibility. A CAUTION verdict can arise from reserves/buffer or the monthly net-flow requirement even when the purchase fits the recorded balance. No financial rule is changed by this measurement framework.
+
+### Proposed validation metrics — future customer study
+
+Savings-task success checks: correctly identify required monthly saving and the remaining monthly gap; correctly interpret feasibility and the estimated duration (including a not-estimable state); explain at least one important assumption or limitation.
+
+Purchase-task success checks: correctly identify available funds, goal reserves and the emergency buffer; correctly interpret the verdict; explain why CAUTION may occur; recognize when recorded data is insufficient. Correct interpretation includes distinguishing hypothetical recorded cash flow after purchase from spendable funds after reserves.
+
+| Proposed measure | How a future study would measure it |
+| --- | --- |
+| Task completion rate | Completed all required interpretation checks without facilitator help, divided by task attempts; report sample size and incomplete attempts. |
+| Interpretation accuracy | Correct answers divided by scored answers, using the displayed deterministic result and its limitations as the answer key. Report savings and purchase tasks separately. |
+| Time to correct interpretation | Elapsed seconds from the task prompt to correct completion; report unsuccessful attempts separately. |
+| Interpretation errors | Count incorrect amount readings, reserve/buffer confusion, verdict or feasibility misinterpretation, and unsupported guarantee claims per task. |
+| Comprehension with multilingual explanation | Compare correct interpretation before and after an optional purchase-assessment explanation in the customer's chosen English, Bangla or Banglish mode. Use equivalent scenarios and account for practice/order effects. |
+| Stated decision change | Record intended action before and after viewing the assessment and the customer's reason for changing or keeping it. This is not proof of an executed purchase, avoided spending or improved saving. |
+
+**Targets and results: not established.** No participant counts, percentages, improvement targets or observed customer results are assigned. A proposed consented study would compare matched savings and purchase tasks using the customer's usual method and the prototype, counterbalance task order, and keep an anonymized manual observation log. Optional purchase explanations can be evaluated separately; the AI Coach is not an integrated explainer of the complete Savings Plan result. No study, recruitment, research telemetry or metric dashboard is implemented by this stage.
+
+### Customer/business value hypotheses and workflow differentiation
+
+The value hypotheses are that explicit saving requirements and gaps help customers understand a plan, reserve-aware purchase checks help them evaluate discretionary purchases, and optional local-language support improves comprehension. More informed financial behavior and a more useful customer experience are effects to investigate, not measured benefits. No Upay retention, transaction, wallet-balance, churn, revenue or other business improvement has been established.
+
+The defensible differentiation is the combined customer workflow: goal-aware savings planning, reserve-aware purchase affordability, recorded MFS-oriented financial context, optional English/Bangla/Banglish explanation, and deterministic financial decisions separated from generative AI. This is product/workflow differentiation. No novel ML algorithm, proprietary prediction model, scientific innovation or superior performance is claimed. A future comparison against existing budgeting methods/tools should test the same two customer tasks.
+
+### Actual validated impact — not established
+
+There are no verified customer interviews, survey findings, controlled/user studies, testimonials or behavioral follow-up results. Customer demand, the priority customer group, MFS-specific advantage, multilingual comprehension improvement, actual saving improvement, reduced spending, retention and financial independence remain unvalidated. Software pass counts, synthetic calculations, wellness scores and completed recommendation statuses do not establish customer or business benefit. The prototype does not verify Upay-customer status or connect to a live Upay wallet.
+
+### Synthetic demonstration protocol — implementation evidence only
+
+1. **Scenario A — Savings Plan:** use a clearly labeled synthetic goal and recorded-data fixture. Open Goal Details and identify the requirement, remaining gap, deadline feasibility, estimated months (or not-estimable state), a potential spending adjustment and one limitation. Keep the separate What-if Simulator calendar date distinct from the Savings Plan duration.
+2. **Scenario B — Purchase Affordability:** use a clearly labeled synthetic assessment. Identify available funds, goal reserves, buffer and verdict, then contrast a CAUTION or insufficient-data fixture. Explain the ACTIVE-goal monthly requirement and hypothetical after-purchase balance. The core verdict needs no AI; any static explanation example must also be labeled synthetic.
+
+These demonstrations show implemented outputs, not a customer study. No participant responses, before/after benefits or financial outcomes are inferred from them. Consented customer research and longer-term follow-up remain future work.
+
+## 13.2 Product limitations and future scope
 
 Limitations include dependence on user-recorded data, no live wallet synchronization, illustrative wellness and goal-savings emergency proxies. Recorded balance and earmarked savings can overlap economically and do not establish liquidity. Simulations omit interest, fees, inflation and unrecorded commitments. AI prose can vary or be inaccurate, and provider quotas/timeouts can prevent responses. There is no dedicated per-user AI rate-limiting layer or automatic model fallback. The prototype is not a lending/credit system or professional financial-advice service.
 

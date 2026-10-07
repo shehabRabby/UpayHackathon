@@ -36,6 +36,7 @@ export default async function Home() {
         <p>Backend calculations determine the plan and affordability assessment. AI provides optional explanation; incomplete records can limit either result.</p>
       </div>
       <div className="planning-triptych"><GoalPreview /><PlanningPreview /><PlanningPreview affordability /></div>
+      <Link className="inline-link section-space" href="/about#validation-framework">See our proposed measures of customer decision clarity <ProductIcon name="arrow" /></Link>
     </section>
     <section data-public-section="capabilities" className="public-section container">
       <div className="section-heading"><p className="eyebrow">CORE DECISIONS, SUPPORTED BY CONTEXT</p><h2>Start with a goal or a purchase.</h2></div>

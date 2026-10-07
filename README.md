@@ -23,6 +23,23 @@ The prototype is designed for an MFS-oriented customer context: BDT, Asia/Dhaka 
 
 The design hypothesis is that clearer saving-pace and purchase context can support these decisions. There are currently no verified customer interviews or validated demand findings, and no claim of superiority over generic budgeting tools.
 
+## Customer impact and validation
+
+The two intended customer outcomes are **savings plan clarity** and **purchase decision clarity**. The prototype already calculates and displays the following measurable product outputs. Understanding or acting on them is a separate customer outcome that still needs research.
+
+| Customer outcome | Implemented measurable outputs | Proposed validation metrics |
+| --- | --- | --- |
+| Savings plan clarity | Remaining goal amount; required, available and projected monthly saving; remaining monthly gap; deadline feasibility; estimated months to goal; potential category spending adjustments. | Correctly identify required saving and the remaining gap; interpret feasibility and estimated duration; explain at least one assumption or limitation. |
+| Purchase decision clarity | Planned purchase; recorded cash-flow balance; saved-goal reserves; estimated emergency buffer; available amount; recent monthly net flow; selected ACTIVE-goal monthly requirement; deterministic verdict. | Correctly identify available funds, goal reserves and buffer; interpret the verdict; explain CAUTION despite a purchase fitting the recorded balance; recognize insufficient recorded data. |
+
+**Proposed validation metrics — future work:** task completion rate, interpretation accuracy, time to correct interpretation, interpretation-error counts, comprehension with versus without optional English/Bangla/Banglish purchase explanation, and stated decision changes after viewing an assessment. A consented study could compare matched tasks using a customer's usual method and the prototype, recording observations manually. A stated decision change does not establish an executed purchase, avoided spending or improved saving. No targets or participant results have been established. See the [judge-facing measurement framework and synthetic demonstration protocol](FINAL_PROJECT_REPORT.md#131-customer-impact-and-validation).
+
+**Customer/business value hypotheses:** making saving requirements and reserve-aware purchase checks easier to understand, with optional local-language explanation, could support more informed decisions. These effects are unvalidated; no Upay business or revenue impact has been measured.
+
+**Product/workflow differentiation:** goal-aware savings planning and reserve-aware purchase affordability share recorded MFS-oriented context, with optional English/Bangla/Banglish explanation. Deterministic financial calculations remain separate from generative AI. This describes the implemented workflow; technical novelty, superiority over budgeting tools and language-related comprehension gains have not been established. A future comparison should evaluate those customer tasks against existing alternatives.
+
+**Actual validated impact — not established:** no verified customer interviews, surveys, controlled studies or behavioral follow-up exist. Demand, the best customer group, MFS-specific advantage, actual savings improvement, reduced spending, retention and financial independence remain unvalidated. Passing software tests and synthetic demonstrations are implementation evidence, not customer validation. Signing in does not verify Upay-customer status, and there is no live wallet linkage or research-metric collection dashboard.
+
 ## Key features
 
 | Area | Implemented functionality |

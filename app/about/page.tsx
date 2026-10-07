@@ -36,6 +36,29 @@ export default function About() {
       </div>
       <p className="muted">Goal contributions are separately recorded. The Savings Plan uses recorded activity; the What-if Simulator uses hypothetical inputs. Wellness and profile tools remain secondary utilities.</p>
     </section>
+    <section id="validation-framework" data-public-section="validation" className="public-section container" aria-labelledby="customer-value-heading">
+      <div className="section-heading"><p className="eyebrow">TWO OUTCOMES. A CLEAR EVIDENCE BOUNDARY.</p><h2 id="customer-value-heading">How we measure customer value</h2><p>The prototype calculates and displays decision outputs from recorded data. We propose evaluating whether customers can interpret them accurately and efficiently. Customer impact has not yet been validated.</p></div>
+      <div className="grid two">
+        <article className="feature-card">
+          <h3>Savings plan clarity</h3>
+          <p>Can you understand the saving pace your goal requires and whether your recorded-data scenario appears feasible?</p>
+          <p><strong>Implemented outputs:</strong> remaining goal amount, required and available/projected monthly saving, remaining monthly gap, deadline feasibility, estimated months to goal and potential spending adjustments.</p>
+          <h4>Proposed validation metrics</h4>
+          <ul><li>Correctly identify required monthly saving.</li><li>Correctly identify the remaining monthly gap.</li><li>Correctly interpret deadline feasibility.</li><li>Correctly interpret the estimated completion duration.</li><li>Explain at least one important assumption or limitation.</li></ul>
+        </article>
+        <article className="feature-card">
+          <h3>Purchase decision clarity</h3>
+          <p>Can you understand whether a planned purchase fits your recorded situation after accounting for saved goal funds and an emergency buffer?</p>
+          <p><strong>Implemented outputs:</strong> purchase amount, recorded balance, saved-goal reserves, estimated buffer, available amount, recent monthly net cash flow, selected ACTIVE-goal monthly requirement and the calculated verdict.</p>
+          <h4>Proposed validation metrics</h4>
+          <ul><li>Correctly identify the available purchase amount.</li><li>Correctly identify saved-goal reserves.</li><li>Correctly identify the emergency buffer.</li><li>Correctly interpret the affordability verdict.</li><li>Explain why CAUTION can occur despite a purchase fitting the recorded balance.</li><li>Recognize when recorded data is insufficient.</li></ul>
+        </article>
+      </div>
+      <p className="section-space"><strong>Future study measures:</strong> task completion rate, interpretation accuracy, time to a correct interpretation and interpretation errors. We also propose comparing comprehension with and without optional multilingual purchase explanations, and recording stated decision changes after an assessment. No targets or study results have been established.</p>
+      <p><strong>Value hypotheses:</strong> clearer saving plans, better-understood discretionary purchase checks and optional local-language explanation could support more informed decisions. These customer and business effects remain hypotheses.</p>
+      <p><strong>Workflow differentiation:</strong> goal-aware savings planning and reserve-aware purchase checks share recorded MFS-oriented context, with optional English, Bangla and Banglish explanation. Financial decisions stay in deterministic code, separate from generative AI. Comparative value against other budgeting tools remains to be evaluated.</p>
+      <p className="muted"><strong>Current evidence:</strong> no verified customer interviews or controlled study results. Actual saving improvement, reduced spending, retention, financial independence and Upay business impact remain unvalidated. Software tests and synthetic demonstrations verify implementation; they are not customer studies.</p>
+    </section>
     <section data-public-section="responsibility" className="public-section soft-section">
       <div className="container feature-split"><div className="section-heading"><p className="eyebrow">RESPONSIBLE BY DESIGN</p><h2>You keep the control.</h2><p>Plans and assessments depend on the information you record and the assumptions you choose. Incomplete records can limit the result; an assessment is not a guarantee that a purchase is safe.</p></div><ul className="responsibility-list"><li>User-recorded financial information</li><li>Illustrative AI guidance</li><li>No execution of financial transactions</li><li>There is no live Upay wallet connection</li></ul></div>
     </section>
