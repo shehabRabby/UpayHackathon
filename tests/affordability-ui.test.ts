@@ -211,6 +211,7 @@ describe("Planning purchase-affordability presentation", () => {
     const checkbox = html.match(/<input[^>]*name="explain"[^>]*>/)?.[0];
     expect(checkbox).toContain('type="checkbox"');
     expect(checkbox).not.toContain("checked");
+    expect(render()).toContain("submitting sends this calculated assessment to the configured Gemini provider");
     expect(html).not.toContain("Optional AI explanation</h4>");
     state.assessment = { ...assessment, explanation: "Synthetic optional explanation" };
     html = result(render());

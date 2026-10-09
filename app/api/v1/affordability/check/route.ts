@@ -6,6 +6,7 @@ import { affordabilityInput } from "@/lib/phase56-validation";
 import { decimal, rollingPeriod, spendingRows } from "@/lib/analytics";
 import { affordability } from "@/lib/projections";
 import { generateCoaching, type CoachLanguage } from "@/lib/gemini";
+import { requireAiAllowance } from "@/lib/ai-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ export const POST = handle(async (request: Request) => {
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   let explanation: string | null = null;
   if (input.explain) {
+    requireAiAllowance(userId);
     const answer = await generateCoaching({ message: "Explain this backend-calculated affordability assessment and its assumptions. Do not recalculate or change its decision.",
       language: input.language ?? result.preferredLanguage, context: { purpose: "affordability_explanation", assessment: result.data } });
     explanation = answer.message;

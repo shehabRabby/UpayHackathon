@@ -4,8 +4,9 @@ import { z } from "zod";
 
 export class ApiError extends Error {
   constructor(
-    public status: 400 | 401 | 403 | 404 | 500,
+    public status: 400 | 401 | 403 | 404 | 429 | 500,
     message: string,
+    public retryAfterSeconds?: number,
   ) {
     super(message);
   }
@@ -59,7 +60,7 @@ export function failure(error: unknown) {
     { success: false, message, data: null, ...(meta ? { meta } : {}) },
     {
       status,
-      headers: { "Cache-Control": "no-store" },
+      headers: { "Cache-Control": "no-store", ...(error instanceof ApiError && error.status === 429 && error.retryAfterSeconds ? { "Retry-After": String(error.retryAfterSeconds) } : {}) },
     },
   );
 }

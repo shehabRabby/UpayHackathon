@@ -36,7 +36,7 @@ The two intended customer outcomes are **savings plan clarity** and **purchase d
 
 **Customer/business value hypotheses:** making saving requirements and reserve-aware purchase checks easier to understand, with optional local-language explanation, could support more informed decisions. These effects are unvalidated; no Upay business or revenue impact has been measured.
 
-**Product/workflow differentiation:** goal-aware savings planning and reserve-aware purchase affordability share recorded MFS-oriented context, with optional English/Bangla/Banglish explanation. Deterministic financial calculations remain separate from generative AI. This describes the implemented workflow; technical novelty, superiority over budgeting tools and language-related comprehension gains have not been established. A future comparison should evaluate those customer tasks against existing alternatives.
+**Product/workflow differentiation:** recorded activity → savings goal → required saving, capacity, gap and feasibility → purchase assessment with saved-goal reserves and an estimated emergency buffer → optional English/Bangla/Banglish explanation. Customers open the tools separately; the Savings Plan models one goal, while the purchase check reserves saved amounts across all noncancelled goals. Calculations and verdicts work without AI. General Coach discusses summaries and selected-goal facts, not the complete Savings Plan result. The [Stage 9 source-linked comparison](STAGE9_INNOVATION_DIFFERENTIATION.md#conceptual-alternative-comparison) contrasts a defined basic tracker, static spreadsheet/calculator, calculation-only mode and optional-AI mode across seven dimensions. Spreadsheets can reproduce the formulas and real trackers may offer richer features. This is a combined workflow contribution; individual ideas are not novel inventions, and comparative superiority or customer improvement has not been established.
 
 **Actual validated impact — not established:** no verified customer interviews, surveys, controlled studies or behavioral follow-up exist. Demand, the best customer group, MFS-specific advantage, actual savings improvement, reduced spending, retention and financial independence remain unvalidated. Passing software tests and synthetic demonstrations are implementation evidence, not customer validation. Signing in does not verify Upay-customer status, and there is no live wallet linkage or research-metric collection dashboard.
 
@@ -170,7 +170,7 @@ Versions below are declarations in `package.json`; `package-lock.json` resolves 
 | Frontend | Next.js `16.3.8`, React/React DOM `^19.2.0` | App Router pages, layouts, interactive workspace. |
 | Language | TypeScript `^5.9.3` | Strict typing across UI, APIs, and services. |
 | Styling | `app/globals.css` | Custom blue/yellow design system and responsive/focus/motion styles. |
-| UI / charts | Local React components, inline SVG, native progress elements, CSS visuals | No external component, icon, or charting library. |
+| UI / charts | Local React components, inline SVG, native progress elements, CSS visuals; Recharts `3.10.1` | Recharts is used for selected Analytics visualizations; other UI and icons use local components. |
 | Animation | CSS and `IntersectionObserver` | Lightweight effects; no animation dependency. |
 | Backend | Next.js Node.js route handlers | `/api/v1` endpoints and auth callback. |
 | Validation | Zod `4.6.5` | Strict requests and structured AI responses. |
@@ -267,6 +267,7 @@ Mutations accept JSON; GET inputs are query parameters. `[id]` is a validated UU
 | `403` | Missing profile or prohibited authenticated operation. |
 | `404` | Missing owned resource or unknown endpoint. |
 | `500` | Sanitized database, auth-service, configuration, or AI failure. Upstream Gemini `429` is classified in diagnostics and currently maps to an application `500` quota message. |
+| `429` | Process-local per-user AI attempt limit or limiter capacity reached; safe envelope and `Retry-After`. Calculation-only requests remain available. |
 
 Important validation/business rules:
 
@@ -528,18 +529,71 @@ Both journeys work without AI. When coaching is useful, intentionally submit a q
 
 These controls are not security certifications. Operational access, retention, external-provider data handling, and monitoring need separate production review. The prototype cannot access wallets, transfer funds, or execute purchases.
 
+### Stage 8 Responsible AI / security matrix
+
+The [Stage 8 review](STAGE8_RESPONSIBLE_AI_SECURITY.md) documents exact Gemini fields, threats, retention/deletion behavior and fresh verification. User-entered records can contain personal information; automated fixtures/public demos are synthetic/static. Submitting chat or checking optional explanation sends relevant data to Gemini; calculation-only features do not. Avoid unnecessary sensitive text. No formal retention period or account-wide deletion is implemented; deleting a conversation leaves its recommendations. Provider retention/deletion settings are not verified.
+
+| Control | Status | Evidence | Limitation |
+| --- | --- | --- | --- |
+| Authentication | IMPLEMENTED + TESTED | Verified Supabase identity; offline Auth tests | Production configuration not audited |
+| User scoping | IMPLEMENTED + TESTED | Owned objects/parents; route tests including transaction read/edit/delete | Mocked application checks are not deployed RLS evidence |
+| Input validation | IMPLEMENTED + TESTED | Strict Zod types, money/text/date/UUID bounds | Does not establish data truth |
+| RLS definitions | IMPLEMENTED, NOT PRODUCTION VERIFIED | Repository SQL enables ten tables with read policies | Deployment, roles and effective isolation unverified |
+| Server-side secrets | IMPLEMENTED + TESTED | Server-only Gemini/public config; secret-key rejection and local pattern audit | Not a comprehensive leak/penetration audit |
+| AI context minimization | IMPLEMENTED + TESTED | Actual context builder → injected SDK transport; limited summaries/history | Financial facts/text are still disclosed; no free-text redaction |
+| Deterministic calculations | IMPLEMENTED + TESTED | Backend formulas; contradictory explanation cannot change verdict fields | Recorded data may be incomplete; AI prose may be false |
+| AI response validation | PARTIAL | Strict shape/enums/length and Banglish block checks | No numerical truth or fluent-language guarantee |
+| Prompt/data separation | IMPLEMENTED + TESTED | Offline system/untrusted-JSON construction | Live injection resistance not proven |
+| AI rate limiting | PARTIAL | Six attempts/user/rolling minute per process; 429/Retry-After tests | No distributed quota, spend cap or full abuse protection |
+| Provider failure handling | IMPLEMENTED + TESTED | Bounded transport, safe errors, rollback/replay tests | No automatic optional-explanation fallback |
+| Financial disclosures | IMPLEMENTED + TESTED | Calculated verdict first, illustrative wellness and emergency-proxy limitations | No professional advice, credit/loan or liquidity guarantee |
+| Synthetic test data | DOCUMENTED ONLY | Authored evaluation/fixture labels and browser interception | Does not represent customer/provider outcomes |
+| Consent boundary | PARTIAL | Submission disclosure and optional unchecked explanation | No consent ledger, provider privacy audit or MFS authorization |
+| Deletion | PARTIAL | Owned conversation/message delete, manual/mock transaction delete, goal archive | Recommendations/assessments retained; account-wide deletion absent |
+| Logging privacy | IMPLEMENTED + TESTED | Metadata classification; sensitive-error exclusion test | Production logs/retention and alerting unverified |
+| Live wallet access | NOT IMPLEMENTED | Manual/mock create inputs; no adapter | Authorized MFS design only |
+
 ## Testing & quality assurance
 
-Tests live in `tests/` and `e2e/application.spec.ts`. No historical pass count or unverified CI badge is asserted; run checks against the checkout being evaluated.
+**Latest local verification — Analytics redesign and final audit fixes (9 October 2026):** typecheck PASS; lint 0 errors/5 existing warnings; **358/358 Vitest tests in 30 files PASS**; production build PASS; **64/64 mocked browser cases PASS** (desktop 32/32, mobile emulation 32/32); local import/secret-pattern audit PASS; `git diff --check` PASS. The Analytics UI uses Recharts 3.10.1 for selected visualizations, preserves returned BDT amounts and table alternatives, and tests keyboard tooltip updates with one accessible live region. These recorded local results do not verify the deployed commit, production security, live Gemini quality or customer outcomes. Earlier stage results below remain historical evidence.
+
+Tests live in `tests/` and `e2e/application.spec.ts`. The following Stage 6 evidence was collected locally on **8 October 2026**; it does not verify the deployed application. Run the checks against the checkout being evaluated.
+
+**Fresh Stage 9 documentation verification (8 October 2026):** typecheck PASS; lint 0 errors/5 existing warnings; 326/326 Vitest tests in 29 files PASS, with no failed/skipped tests; Node-native local import/secret-pattern audit PASS; 45 local documentation links/anchors valid; `git diff --check` PASS. All commands/checks exited 0. Stage 9 added the [source-linked conceptual differentiation review](STAGE9_INNOVATION_DIFFERENTIATION.md), updated two existing documents and preserved all application/tests and earlier stage reviews. Build/browser were not rerun for these documentation changes; their Stage 8 results below remain historical. Comparative advantage and customer impact remain unvalidated.
+
+**Fresh Stage 8 resume verification (8 October 2026):** typecheck PASS; lint 0 errors/5 existing warnings; complete Vitest **326/326 tests in 29 files** PASS; focused Responsible AI/security checks **123/123 tests in seven files** PASS; production build PASS; mocked browser **60/60**, desktop **30/30** and mobile **30/30**, with no failures/skips/flaky cases; Node-native import/secret-pattern audit PASS (136 source files, 18 commits, no findings); `git diff --check` PASS. All commands exited 0. Windows browser teardown required stopping only this run's verified local Next server after all cases completed; Playwright then emitted its successful summary/JSON and exit result. Exact commands, preserved prior evidence, limits and judge status are in the [Stage 8 report](STAGE8_RESPONSIBLE_AI_SECURITY.md). This resume changed documentation only and added no tests/features. Mobile uses Chrome/Chromium device emulation; local/mocked results do not verify production security, deployed RLS, live Gemini behavior or real-device Safari.
 
 | Check | Coverage / behavior |
 | --- | --- |
 | Vitest | Financial arithmetic, schemas, auth/profile, owned routes, API client, Gemini transport/output mocks, languages, coach retry/rollback, recommendation transitions/UI. |
-| Playwright | Public auth-aware navigation, route scroll/history, protected workspace, fixture-backed CRUD/planning/profile, reset/error/stale-result behavior, recommendation actions, responsiveness. |
+| Playwright | Public auth-aware navigation, route scroll/history, protected workspace, fixture-backed transaction creation/editing, goals/planning/profile, reset/error/stale-result behavior, recommendation actions, responsiveness. |
 | Responsive fixtures | Widths from 320 through 1440 pixels; long English/Bengali Unicode/Banglish coach messages. |
 | TypeScript / ESLint | Strict typing and Next/Core Web Vitals rules; existing effect-state lint rule is a warning. |
 | Build / startup | Production build, temporary startup, page shells, safe callback, API rejection envelopes, sampled runtime diagnostics. |
 | Service checks | Separate read-only Auth/database checks, temporary-table Unicode test, explicitly opt-in AI tools. |
+
+### Stage 6 verification matrix
+
+| Evidence category | Observed result | Boundary |
+| --- | --- | --- |
+| STATIC / LOCAL VERIFICATION | Typecheck PASS; lint 0 errors/5 existing warnings; 315/315 tests PASS in 27/27 files (0 failed/skipped); production build PASS. | TypeScript, ESLint, complete Vitest suite and local production build; no remote database/load test. |
+| MOCKED BROWSER VERIFICATION | 60/60 cases PASS in one file: desktop 30/30, mobile 30/30; 0 failed/skipped; exit 0. | 30 cases in each of desktop Chrome and iPhone 13-sized Chromium emulation; Auth/application APIs intercepted, unmatched external browser traffic blocked. No real accounts or live Gemini calls. |
+| OFFLINE AI EVALUATION | 41/41 tests PASS in `tests/ai-evaluation.test.ts`, included in the final Vitest suite. | Authored synthetic replies through an injected SDK transport; schema/context/script boundaries, not live factual accuracy or language quality. |
+| SIMULATED FAILURE / CONCURRENCY TESTS | 10/10 financial-write tests PASS in `tests/concurrency.test.ts`, included in the final Vitest suite. Existing coach/recommendation guards retained. | In-memory snapshots, injected Prisma `P2034`, insert/update/commit failures and explicit retry; application-level conflict handling under simulated conditions, not PostgreSQL/Supabase concurrency or throughput. |
+| HISTORICAL / MANUAL EVIDENCE | Earlier report preparation recorded 222 tests/23 files. The supplied Stage 5 baseline recorded 301 tests/26 files, typecheck/build PASS and 5 lint warnings. | Historical records, not fresh Stage 6 results. No authenticated production/manual service verification was performed in this resume. |
+| NOT VERIFIED | Live production database concurrency, load/performance, production-scale reliability/scalability, live wallet integration/automatic ingestion, real customer impact, live Gemini accuracy/Bangla/Banglish quality, production prompt-injection resistance and real provider availability. | Mocked/browser/offline success cannot establish these outcomes. |
+
+**PRE-STAGE-6-RESUME BASELINE:** typecheck PASS; ESLint 0 errors/6 warnings; Vitest 309/309 tests across 27/27 files PASS; production build PASS; mocked browser run 58 PASS/2 FAIL out of 60. Both browser failures were a stale About-page section-count assertion (7 expected, 8 rendered after the Stage 4 validation framework). Related stale ecosystem wording and `pause/resume` casing were aligned with existing source. The extra baseline lint warning was an unused import in the untracked concurrency suite, resolved during consolidation.
+
+**Intermediate validation correction:** a later full browser attempt also returned 58 PASS/2 FAIL because a new test assertion incorrectly required direct introduction/carousel adjacency. The existing promotional disclosure belongs between them. The test now verifies introduction → disclosure → carousel, with no application change; failed-run logs were retained before the final rerun.
+
+**Failure/recovery evidence:** delayed browser loading → HTTP 500 → visible error → explicit Retry; failed forms retain inputs; edits clear stale calculation results; malformed dashboard data reaches the error boundary and recovers; uncertain coach sends retain their request ID. Offline tests also reject malformed JSON envelopes without automatic retry and recover on an explicit new request. Provider timeouts/unavailability, schema errors and Banglish leakage already have offline coverage. If an optional purchase explanation fails, that request returns an error; disabling explanation and explicitly retrying returns the same deterministic assessment. There is no automatic explanation fallback.
+
+**Conflict evidence:** two competing contribution requests reach the fixture commit barrier against the same snapshot; the fixture injects a conflict for one and publishes only the winner. Retrying rechecks remaining goal/source capacity. The fixture supplies rollback/serialization behavior; this tests handler boundaries and safe responses, not the database engine. Contribution/create endpoints have no general request-id deduplication or automatic conflict retry. An uncertain financial write should be refreshed before retrying; coach replay and recommendation same-status no-ops are separate controls.
+
+**Reproduction and visible evidence:** use the existing Chrome installation, Node `v24.15.0`, npm `11.12.1`, a configured local environment and free port `3118`. The build generates Prisma Client without pushing/seeding the database. `npm.cmd run test:browser` serves that build locally and captures synthetic public/auth/workspace screenshots under ignored `test-results/`; these captures are not production screenshots or a visual-diff benchmark. Raw logs and copies of the initial mixed worktree files are retained locally under ignored `coverage/stage6/`. The detailed [resume and multi-agent audit](FINAL_PROJECT_REPORT.md#122-stage-6-resume-and-multi-agent-change-audit) identifies what was preserved and adjusted.
+
+On this Windows sandbox, Playwright's server teardown stalled after cases finished. Stopping only the local Next server PID printed by `[WebServer]` with `Stop-Process -Id <pid> -Force` allowed the runner to report its actual result. Do not terminate the test runner or an unrelated server. This is a local test-environment cleanup limitation, not production-reliability evidence.
 
 Unit/browser AI tests use mocks/fixtures. Browser Auth/API traffic is intercepted with synthetic data. Projects use desktop Chrome and iPhone 13-sized Chromium emulation, not real-device Safari coverage.
 
@@ -602,13 +656,16 @@ DEPLOYMENT.md COACH_DIAGNOSTICS.md README.md
 - Recorded cash flow is not verified available cash. Goal balances may overlap recorded expenses and do not prove liquid emergency reserves.
 - Wellness is illustrative, not a credit score. History stores scores/dates, not original inputs or formula versions.
 - Simulations exclude interest/fees/inflation and other goals; goal plans omit unrecorded obligations and do not guarantee outcomes.
-- AI is quota-dependent; no dedicated per-user quota-management layer or automatic model fallback. Strict Banglish rejection can require deliberate later retry.
+- AI is quota-dependent; six attempts/user/rolling minute are protected per process, not across serverless instances. No distributed quota management or automatic model fallback. Strict Banglish rejection can require deliberate later retry.
 - AI receives selected context/messages. Prompt/schema controls cannot guarantee correctness or eliminate prompt-injection risk.
 - Coach `requestId` and same-status recommendation no-ops do not provide general deduplication for all create endpoints.
 - Fresh databases require reviewed Prisma/SQL setup; no versioned migration history. Browser tests use Chrome/mobile emulation and fixtures.
+- Live production concurrency, load/performance, provider availability, factual/language quality and customer impact remain unverified; Stage 6 results are local, mocked or simulated.
 - Password reset/social OAuth UI are not implemented. Confirmation/email delivery depend on Supabase settings.
 
 ## Future improvements
+
+Stage 7 source audit, architecture/trust boundaries, process-local AI limits, database/RLS/connection evidence and **design-only authorized MFS integration** are documented in [Stage 7](STAGE7_SCALABILITY_INTEGRATION.md). Stage 6 verification above remains historical evidence for that stage; fresh Stage 7 results are recorded separately.
 
 Potential next steps, **not current features**:
 

@@ -10,6 +10,7 @@ import { messageData, recommendationData } from "@/lib/coach-data";
 import { replayTurn, turnIds } from "@/lib/coach-retry";
 import { coachDiagnostic } from "@/lib/coach-diagnostics";
 import { assertCoachLanguage } from "@/lib/coach-language";
+import { requireAiAllowance } from "@/lib/ai-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,6 +50,7 @@ export const POST = handle(async (request: Request, context: IdContext) => {
   // Keep the paid network call outside database transactions. Failed calls
   // produce no orphan messages, recommendations, or altered conversation state.
   stage = "generation";
+  requireAiAllowance(userId);
   const answer = await generateCoaching({ message: input.message, language: input.language ?? prepared.preferredLanguage,
     context: prepared.context, history: prepared.history });
   assertCoachLanguage(answer, input.language ?? prepared.preferredLanguage);

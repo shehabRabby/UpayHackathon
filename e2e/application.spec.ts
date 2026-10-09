@@ -32,6 +32,13 @@ const expenseId = "00000000-0000-4000-8000-000000000005";
 const conversationId = "00000000-0000-4000-8000-000000000006";
 const recommendationId = "00000000-0000-4000-8000-000000000007";
 async function fixture(page: Page, longContent = false, presentation = false) {
+  // Unmatched external traffic must never reach real Auth/provider services.
+  const localOrigin = new URL(String(test.info().project.use.baseURL)).origin;
+  await page.route("**/*", (route) =>
+    new URL(route.request().url()).origin === localOrigin
+      ? route.fallback()
+      : route.abort("blockedbyclient"),
+  );
   let profile: Profile | null = null;
   let transactions: Transaction[] = [],
     goals: Goal[] = [],
@@ -934,6 +941,154 @@ async function login(page: Page) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
+test("Analytics charts preserve values, keyboard tooltips and layout at seven widths", async ({ page }, testInfo) => {
+  test.setTimeout(90000);
+  const state = await fixture(page, false, true);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await login(page);
+  await page.goto("/analytics");
+  await expect(page.locator(".analytics-categories")).toContainText("100%");
+  await expect(page.getByRole("meter", { name: "Overall recorded financial wellness" })).toHaveAttribute("aria-valuenow", "62");
+  await expect(page.locator(".analytics-score-components")).toContainText("0 / 100");
+  await expect(page.locator(".analytics-comparisons")).toContainText("Not comparable");
+  const bdt = (value: number) => new Intl.NumberFormat("en-BD", { style: "currency", currency: "BDT", maximumFractionDigits: 2 }).format(value);
+  let direction: "ArrowRight" | "ArrowLeft" = "ArrowRight";
+  for (const width of [320, 375, 390, 768, 1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const chart = page.locator(".analytics-chart-canvas .recharts-surface");
+    await expect(chart).toBeVisible();
+    // Wait for ResizeObserver to settle at this width before checking the SVG.
+    await expect.poll(async () => chart.evaluate(element => {
+      const canvas = element.closest(".analytics-chart-canvas")!.getBoundingClientRect();
+      const svg = element.getBoundingClientRect();
+      return Math.abs(svg.width - canvas.width) < 2 && svg.height >= 250;
+    })).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    if (width <= 600) expect(await page.locator(".analytics-dashboard .table-wrap").first().evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    for (const value of await page.locator(".analytics-meter-value,.analytics-ring-label").all()) {
+      expect(await value.evaluate(element => {
+        const bounds = element.getBoundingClientRect();
+        return element.scrollWidth <= element.clientWidth + 1 && bounds.left >= 0 && bounds.right <= innerWidth;
+      })).toBe(true);
+    }
+    await expect(page.locator(".analytics-chart-key")).toContainText("Income");
+    await expect(page.locator(".analytics-chart-key")).toContainText("Expenses");
+    await chart.focus();
+    await chart.press(direction);
+    direction = direction === "ArrowRight" ? "ArrowLeft" : "ArrowRight";
+    const tooltip = page.locator(".analytics-tooltip");
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toHaveAttribute("role", "status");
+    await expect(tooltip).toHaveAttribute("aria-live", "assertive");
+    await expect(tooltip).toHaveAttribute("aria-atomic", "true");
+    await expect(page.locator('.analytics-chart-canvas [aria-live]')).toHaveCount(1);
+    await expect(tooltip).toContainText("Income");
+    await expect(tooltip).toContainText("Expenses");
+    await expect(tooltip).toContainText("Net cash flow");
+    const september = (await tooltip.textContent())!.includes("Sep");
+    for (const value of september ? [45000, 33000, 12000] : [50000, 35000, 15000]) await expect(tooltip).toContainText(bdt(value));
+    const bounds = (await tooltip.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    if ([320, 390, 1440].includes(width)) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({ path: testInfo.outputPath(`analytics-polish-${width}.png`), fullPage: true, scale: "css" });
+    }
+    await page.getByRole("heading", { name: "Monthly trends" }).click();
+  }
+  await page.getByLabel("Start date").fill("2026-09-01");
+  await page.getByLabel("End date").fill("2026-10-02");
+  const filtered = page.waitForRequest(request => request.url().includes("/analytics/spending?") && request.method() === "GET");
+  await page.getByRole("button", { name: "Apply period" }).click();
+  const url = new URL((await filtered).url());
+  expect(url.searchParams.get("startDate")).toBe("2026-09-01");
+  expect(url.searchParams.get("endDate")).toBe("2026-10-02");
+  await expect(page.locator(".loading")).toHaveCount(0);
+  await expect(page.getByRole("meter", { name: "Overall recorded financial wellness" })).toHaveAttribute("aria-valuenow", "62");
+  // The maximum supported custom range can span 13 calendar months. Exercise
+  // that dense chart and long returned labels using synthetic API data only.
+  const longPeriod: Spending = {
+    period: { startDate: "2025-10-02", endDate: "2026-10-02", days: 366, timeZone: "Asia/Dhaka" },
+    totalIncome: 130000, totalExpenses: 117000, netCashFlow: 13000, transactionCount: 26,
+    categorySpending: [{ categoryId: "long-fixture", categoryName: "Long category name ".repeat(12), totalSpent: 117000, transactionCount: 13, percentage: 100 }],
+    spendingTrends: Array.from({ length: 13 }, (_, index) => ({
+      month: new Date(Date.UTC(2025, 9 + index, 1)).toISOString().slice(0, 7),
+      totalIncome: 10000, totalExpenses: 9000, netCashFlow: 1000, transactionCount: 2,
+    })),
+    comparison: { incomeChangePercent: 0, expenseChangePercent: null }, calculationVersion: "spending-v1",
+  };
+  await page.route("**/api/v1/analytics/spending**", route => route.fulfill({ json: { success: true, message: "OK", data: longPeriod } }));
+  await page.goto("/analytics");
+  await expect(page.locator(".analytics-category-heading h3")).toHaveText(longPeriod.categorySpending[0].categoryName.trim());
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const chart = page.locator(".analytics-chart-canvas .recharts-surface");
+    await expect.poll(async () => chart.evaluate(element => Math.abs(element.getBoundingClientRect().width - element.closest(".analytics-chart-canvas")!.getBoundingClientRect().width))).toBeLessThan(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    const labels = await page.locator(".recharts-xAxis .recharts-cartesian-axis-tick").evaluateAll(elements => elements.map(element => {
+      const bounds = element.getBoundingClientRect();
+      return { left: bounds.left, right: bounds.right };
+    }));
+    expect(labels.length).toBeGreaterThanOrEqual(2);
+    for (let index = 1; index < labels.length; index++) expect(labels[index].left).toBeGreaterThanOrEqual(labels[index - 1].right);
+    const bar = page.locator(".analytics-chart-canvas .recharts-bar-rectangle").first();
+    await bar.hover();
+    await expect(page.locator(".analytics-tooltip")).toContainText(bdt(10000));
+    await expect(page.locator(".analytics-tooltip")).toContainText(bdt(9000));
+    await expect(page.locator(".analytics-tooltip")).toContainText(bdt(1000));
+    const bounds = (await page.locator(".analytics-tooltip").boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+  }
+  await page.setViewportSize({ width: 320, height: 1000 });
+  await page.getByRole("button", { name: "Save assessment", exact: true }).click();
+  const saved = page.getByRole("table", { name: "Saved illustrative scores out of 100" });
+  await expect(saved.getByRole("cell", { name: /62/ })).toBeVisible();
+  expect(await saved.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  expect(state.errors).toEqual([]);
+});
+
+test("Analytics preserves loading, failure, retry, empty data and unbounded changes", async ({ page }) => {
+  const state = await fixture(page);
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let attempts = 0;
+  let fail = true;
+  const data: Spending = {
+    period: { startDate: "2026-07-05", endDate: "2026-10-02", days: 90, timeZone: "Asia/Dhaka" },
+    totalIncome: 0, totalExpenses: 0, netCashFlow: 0, transactionCount: 0,
+    categorySpending: [], spendingTrends: [],
+    comparison: { incomeChangePercent: 245.67, expenseChangePercent: -50.25 }, calculationVersion: "spending-v1",
+  };
+  await page.route("**/api/v1/analytics/spending**", async route => {
+    attempts++;
+    if (fail) {
+      await gate;
+      return route.fulfill({ status: 500, json: { success: false, message: "Synthetic analytics failure", data: null } });
+    }
+    return route.fulfill({ json: { success: true, message: "OK", data } });
+  });
+  await login(page);
+  await page.goto("/analytics");
+  const controls = page.locator(".analytics-controls");
+  await expect(controls.getByRole("status")).toContainText("Loading");
+  await expect(page.locator(".analytics-chart-canvas")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Refresh & save insight" })).toBeDisabled();
+  release();
+  await expect(controls.getByRole("alert")).toContainText("Synthetic analytics failure");
+  await expect(page.locator(".analytics-chart-canvas")).toHaveCount(0);
+  fail = false;
+  await controls.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(page.getByText("No recorded transactions in this period.", { exact: true })).toBeVisible();
+  await expect(page.getByText(/No category spending in this period/)).toBeVisible();
+  await expect(page.locator(".analytics-chart-canvas")).toHaveCount(0);
+  await expect(page.locator(".analytics-comparisons")).toContainText("+245.67%");
+  await expect(page.locator(".analytics-comparisons")).toContainText("-50.25%");
+  await expect(page.locator(".analytics-comparisons progress")).toHaveCount(0);
+  await expect(page.getByText("Save an assessment to start your history.", { exact: true })).toBeVisible();
+  expect(attempts).toBeGreaterThanOrEqual(2);
+  expect(state.errors).toEqual([]);
+});
+
 test("recommendation actions follow terminal-state rules", async ({ page }) => {
   await fixture(page);
   const items = ["NEW", "VIEWED", "COMPLETED", "DISMISSED"].map(
@@ -1044,16 +1199,27 @@ test("empty records and recoverable backend errors", async ({ page }) => {
       "No transactions yet. Add your recorded income and expenses.",
     ),
   ).toBeVisible();
-  await page.route("**/api/v1/transactions?**", (route) =>
-    route.fulfill({
+  let releaseFailure!: () => void;
+  const pendingFailure = new Promise<void>((resolve) => { releaseFailure = resolve; });
+  await page.route("**/api/v1/transactions?**", async (route) => {
+    await pendingFailure;
+    return route.fulfill({
       status: 500,
       json: { success: false, message: "Temporarily unavailable", data: null },
-    }),
-  );
+    });
+  });
   await navigate(page, "Transactions");
+  const history = page.locator(".history-panel");
+  try {
+    await expect(history.getByRole("status")).toContainText("Loading your data");
+    await expect(history.locator("table, .empty")).toHaveCount(0);
+  } finally {
+    releaseFailure();
+  }
   await expect(page.locator("main").getByRole("alert")).toContainText(
     "Temporarily unavailable",
   );
+  await expect(history.locator(".loading")).toHaveCount(0);
   await page.unroute("**/api/v1/transactions?**");
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(
@@ -1303,7 +1469,7 @@ test("public pages use static demos and signed-out navigation with working CTAs"
   });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /Smarter money/, level: 1 }),
+    page.getByRole("heading", { name: /Plan your savings/, level: 1 }),
   ).toBeVisible();
   await expect(
     page.getByText("Illustrative demo", { exact: true }).first(),
@@ -1322,7 +1488,7 @@ test("public pages use static demos and signed-out navigation with working CTAs"
   await header.getByRole("link", { name: "About", exact: true }).click();
   await expect(page).toHaveURL(/\/about$/);
   await expect(
-    page.getByRole("heading", { name: "Financial clarity should be easier." }),
+    page.getByRole("heading", { name: /A savings goal/, level: 1 }),
   ).toBeVisible();
   await expect(page.locator("main")).toContainText(
     "no live Upay wallet connection",
@@ -1479,27 +1645,32 @@ test("visual review captures static public, auth and synthetic workspace screens
   await page.screenshot({
     path: testInfo.outputPath("home.png"),
     fullPage: true,
+    scale: "css",
   });
   await page.goto("/login");
   await page.screenshot({
     path: testInfo.outputPath("login.png"),
     fullPage: true,
+    scale: "css",
   });
   await page.goto("/signup");
   await page.screenshot({
     path: testInfo.outputPath("signup.png"),
     fullPage: true,
+    scale: "css",
   });
   await page.goto("/about");
   await page.screenshot({
     path: testInfo.outputPath("about.png"),
     fullPage: true,
+    scale: "css",
   });
   await login(page);
   await expect(page.getByRole("heading", { name: /^Hello,/ })).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("dashboard.png"),
     fullPage: true,
+    scale: "css",
   });
   for (const [path, name] of [
     ["/transactions", "transactions"],
@@ -1515,6 +1686,7 @@ test("visual review captures static public, auth and synthetic workspace screens
     await page.screenshot({
       path: testInfo.outputPath(`${name}.png`),
       fullPage: true,
+      scale: "css",
     });
   }
   await page.goto("/coach");
@@ -1526,6 +1698,7 @@ test("visual review captures static public, auth and synthetic workspace screens
   await page.screenshot({
     path: testInfo.outputPath("coach-empty.png"),
     fullPage: true,
+    scale: "css",
   });
   await openConversations(page);
   await page.getByRole("button", { name: /ConversationConversation/ }).click();
@@ -1533,6 +1706,7 @@ test("visual review captures static public, auth and synthetic workspace screens
   await page.screenshot({
     path: testInfo.outputPath("coach.png"),
     fullPage: true,
+    scale: "css",
   });
   expect(state.errors).toEqual([]);
 });
@@ -1548,11 +1722,11 @@ test("standalone public routes support active navigation, refresh and browser hi
   });
   await page.goto("/");
   for (const [name, path, heading] of [
-    ["Features", "/features", "More clarity. More ways to plan."],
+    ["Features", "/features", "Plan a savings goal. Assess a purchase."],
     [
       "How it works",
       "/how-it-works",
-      "Your records. A practical path forward.",
+      "Plan the saving pace. Check the purchase fit.",
     ],
     ["Security", "/security", "Your financial records belong to you."],
   ]) {
@@ -1734,7 +1908,7 @@ test("public pages have distinct useful content and no private financial request
   await page.goto("/");
   await expect(page.locator("[data-public-section]")).toHaveCount(8);
   await expect(page.locator(".capability-strip")).toContainText(
-    "8Core capabilities",
+    "2Core decisions",
   );
   await expect(
     page
@@ -1742,14 +1916,17 @@ test("public pages have distinct useful content and no private financial request
       .getByRole("link", { name: "Explore features", exact: true }),
   ).toHaveAttribute("href", "/features");
   await page.goto("/about");
-  await expect(page.locator("[data-public-section]")).toHaveCount(7);
+  await expect(page.locator("[data-public-section]")).toHaveCount(8);
+  await expect(page.locator("#validation-framework")).toContainText(
+    "Proposed validation metrics",
+  );
   await expect(page.locator(".ecosystem")).toContainText(
-    "Recorded transactions",
+    "Recorded financial activity",
   );
   await page.goto("/features");
   await expect(page.locator("[data-feature]")).toHaveCount(8);
   await expect(page.locator("[data-feature=goals]")).toContainText(
-    "Pause/resume",
+    "pause/resume",
   );
   await expect(page.locator("[data-feature=affordability]")).toContainText(
     "emergency-buffer",
@@ -1758,10 +1935,10 @@ test("public pages have distinct useful content and no private financial request
   await expect(page.locator("[data-workflow-step]")).toHaveCount(9);
   await expect(page.locator(".workflow-loop>span")).toHaveText([
     "Record",
-    "↓Understand",
-    "↓Plan",
-    "↓Ask AI",
-    "↓Improve",
+    "↓Plan savings",
+    "↓Check a purchase",
+    "↓Review context",
+    "↓Optional explanation",
   ]);
   await page.goto("/security");
   await expect(page.locator("[data-security-section]")).toHaveCount(7);
@@ -1889,6 +2066,7 @@ test("blue yellow visual review at desktop tablet and mobile widths", async ({
           `${path === "/" ? "home" : path.slice(1)}-${width}.png`,
         ),
         fullPage: true,
+        scale: "css",
       });
     }
     await login(page);
@@ -1923,6 +2101,7 @@ test("blue yellow visual review at desktop tablet and mobile widths", async ({
           `${path.slice(1).replaceAll("/", "-")}-${width}.png`,
         ),
         fullPage: true,
+        scale: "css",
       });
     }
   }
@@ -1947,14 +2126,15 @@ test("supplied hero banners load, loop, pause, swipe, and respect reduced motion
     await page
       .locator(".public-main")
       .evaluate((main) =>
-        main.firstElementChild?.classList.contains("hero-slider"),
+        main.firstElementChild?.classList.contains("home-intro"),
       ),
   ).toBe(true);
-  expect(
-    await slider.evaluate((node) =>
-      node.nextElementSibling?.classList.contains("home-intro"),
-    ),
-  ).toBe(true);
+  await expect(page.locator(".home-intro + .container")).toContainText(
+    "Supplied Upay promotional imagery",
+  );
+  await expect(
+    page.locator(".home-intro + .container + .hero-slider"),
+  ).toHaveCount(1);
   expect(count).toBeGreaterThan(0);
   for (let index = 0; index < count; index++) {
     await dots.nth(index).click();
@@ -2017,9 +2197,9 @@ test("supplied hero banners load, loop, pause, swipe, and respect reduced motion
     });
     expect(width <= 900 ? layout.stacked : layout.sideBySide).toBe(true);
     expect(
-      await intro.evaluate((node) => node.getBoundingClientRect().top),
+      await slider.evaluate((node) => node.getBoundingClientRect().top),
     ).toBeGreaterThanOrEqual(
-      await slider.evaluate((node) => node.getBoundingClientRect().bottom),
+      await intro.evaluate((node) => node.getBoundingClientRect().bottom),
     );
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),

@@ -55,7 +55,7 @@ Use test accounts and synthetic records for manual testing. Confirm the Supabase
 ## Exact startup command
 
 ```powershell
-cd D:\Hackathon
+# Run from the cloned repository directory.
 npm.cmd run dev
 ```
 

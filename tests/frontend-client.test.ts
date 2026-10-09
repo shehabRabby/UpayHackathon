@@ -72,6 +72,23 @@ describe("Browser API contracts", () => {
       message: "Cannot connect. Check your connection and try again.",
     });
   });
+  it.each([
+    null,
+    { success: true, message: "OK" },
+    { success: "true", message: "OK", data: [] },
+  ])("rejects a malformed JSON envelope and allows an explicit retry", async (invalid) => {
+    const transport = vi.fn()
+      .mockResolvedValueOnce(Response.json(invalid))
+      .mockResolvedValueOnce(envelope([]));
+    vi.stubGlobal("fetch", transport);
+    await expect(apiRequest("/goals")).rejects.toMatchObject({
+      message: "The server returned an unexpected response.",
+      status: 200,
+    });
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect((await apiRequest("/goals")).data).toEqual([]);
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
   it("rejects external URLs without transmitting tokens", async () => {
     const transport = vi.fn();
     vi.stubGlobal("fetch", transport);

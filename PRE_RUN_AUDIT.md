@@ -105,7 +105,7 @@ Supabase secret and database credentials were previously shared in this conversa
 Dependencies and database are already configured in this workspace. PowerShell commands use npm.cmd to avoid this machine's npm.ps1 execution-policy restriction.
 
 ```powershell
-cd D:\Hackathon
+# Run from the cloned repository directory.
 npm.cmd run verify:database
 npm.cmd run verify:auth
 npm.cmd run dev

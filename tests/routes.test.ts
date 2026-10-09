@@ -40,7 +40,7 @@ import {
   GET as listTransactions,
   POST as createTransaction,
 } from "@/app/api/v1/transactions/route";
-import { DELETE as deleteTransaction } from "@/app/api/v1/transactions/[id]/route";
+import { GET as getTransaction, PATCH as patchTransaction, DELETE as deleteTransaction } from "@/app/api/v1/transactions/[id]/route";
 import { POST as contribute } from "@/app/api/v1/goals/[id]/contributions/route";
 import { GET as dashboard } from "@/app/api/v1/dashboard/summary/route";
 
@@ -80,6 +80,23 @@ beforeEach(() => {
 });
 
 describe("API envelopes, auth, validation, and isolation", () => {
+  it("denies reading, changing or deleting another user's transaction without writes", async () => {
+    mocks.db.transactions.findFirst.mockResolvedValue(null);
+    const attempts = [
+      () => getTransaction(request(`transactions/${id}`), context()),
+      () => patchTransaction(request(`transactions/${id}`, { amount: 100 }, "PATCH"), context()),
+      () => deleteTransaction(new Request(`http://localhost/api/v1/transactions/${id}`, { method: "DELETE" }), context()),
+    ];
+    for (const attempt of attempts) {
+      const response = await attempt();
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({ success: false, message: "Transaction not found", data: null });
+      expect(mocks.db.transactions.findFirst).toHaveBeenLastCalledWith(expect.objectContaining({ where: { transaction_id: id, user_id: userId } }));
+    }
+    expect(mocks.db.transactions.update).not.toHaveBeenCalled();
+    expect(mocks.db.transactions.delete).not.toHaveBeenCalled();
+    expect(mocks.db.categories.findFirst).not.toHaveBeenCalled();
+  });
   it("returns 401 without database access", async () => {
     mocks.requireUser.mockRejectedValue(
       new ApiError(401, "Authentication required"),

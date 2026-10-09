@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api";
 import { turnIds } from "@/lib/coach-retry";
+import { createAiRateLimiter } from "@/lib/ai-rate-limit";
 const mocks = vi.hoisted(() => ({
   user: vi.fn(),
   ai: vi.fn(),
+  allowance: vi.fn(),
   db: {
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
@@ -33,6 +35,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => ({ requireUser: mocks.user }));
 vi.mock("@/lib/prisma", () => ({ prisma: mocks.db }));
 vi.mock("@/lib/gemini", () => ({ generateCoaching: mocks.ai }));
+vi.mock("@/lib/ai-rate-limit", async importOriginal => ({
+  ...await importOriginal<typeof import("@/lib/ai-rate-limit")>(),
+  requireAiAllowance: mocks.allowance,
+}));
 import {
   POST as chat,
   GET as messages,
@@ -64,6 +70,7 @@ const rec = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.allowance.mockImplementation(createAiRateLimiter());
   mocks.user.mockResolvedValue(userId);
   mocks.db.$transaction.mockImplementation(async (operation: unknown) =>
     typeof operation === "function"
@@ -97,6 +104,38 @@ beforeEach(() => {
 });
 
 describe("Phase 5/6 route guarantees", () => {
+  it("shares the real allowance across coach and explanation, preserving calculations and user isolation", async () => {
+    for (let i = 0; i < 6; i++)
+      expect((await chat(request("chat", { message: "Help", language: "en" }), context())).status).toBe(201);
+    mocks.db.ai_messages.create.mockClear();
+    const blocked = await check(request("check", { purchaseAmount: 100, explain: true }));
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("Retry-After")).toBe("60");
+    expect(mocks.ai).toHaveBeenCalledTimes(6);
+    expect(mocks.db.ai_messages.create).not.toHaveBeenCalled();
+    expect((await check(request("check", { purchaseAmount: 100, explain: false }))).status).toBe(200);
+    mocks.user.mockResolvedValue("00000000-0000-4000-8000-000000000003");
+    expect((await check(request("check", { purchaseAmount: 100, explain: true }))).status).toBe(200);
+    expect(mocks.ai).toHaveBeenCalledTimes(7);
+  });
+  it("counts failed provider attempts without creating records", async () => {
+    mocks.ai.mockRejectedValue(new ApiError(500, "Unavailable"));
+    for (let i = 0; i < 6; i++)
+      expect((await chat(request("chat", { message: "Help" }), context())).status).toBe(500);
+    expect((await chat(request("chat", { message: "Help" }), context())).status).toBe(429);
+    expect(mocks.ai).toHaveBeenCalledTimes(6);
+    expect(mocks.db.ai_messages.create).not.toHaveBeenCalled();
+    expect(mocks.db.recommendations.create).not.toHaveBeenCalled();
+  });
+  it("does not spend allowance on unauthorized, invalid or unowned requests", async () => {
+    mocks.user.mockRejectedValueOnce(new ApiError(401, "Authentication required"));
+    expect((await chat(request("chat", { message: "Help" }), context())).status).toBe(401);
+    expect((await check(request("check", { purchaseAmount: -1, explain: true }))).status).toBe(400);
+    mocks.db.ai_conversations.findFirst.mockResolvedValue(null);
+    expect((await chat(request("chat", { message: "Help" }), context())).status).toBe(404);
+    expect(mocks.allowance).not.toHaveBeenCalled();
+    expect(mocks.ai).not.toHaveBeenCalled();
+  });
   it.each([
     { message: "Ei calculation recorded data er upor ভিত্তি kore.", recommendations: [] },
     { message: "Valid Banglish", recommendations: [{ recommendationType: "BUDGET", recommendationText: "খরচ দেখুন", priority: "LOW" }] },
@@ -132,6 +171,7 @@ describe("Phase 5/6 route guarantees", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).data.assistantMessage.message).toBe("পরামর্শ");
     expect(mocks.ai).not.toHaveBeenCalled();
+    expect(mocks.allowance).not.toHaveBeenCalled();
     expect(mocks.db.ai_messages.create).not.toHaveBeenCalled();
     expect(mocks.db.recommendations.create).not.toHaveBeenCalled();
     expect(mocks.db.ai_messages.findMany.mock.calls[0][0].where.conversation.user_id).toBe(userId);
@@ -344,6 +384,20 @@ describe("Phase 5/6 route guarantees", () => {
       user_id: userId,
       status: "NEW",
     });
+    expect(mocks.db.$transaction).toHaveBeenLastCalledWith(expect.any(Function), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+    // Preserve the unique isolation assertion from the consolidated untracked
+    // same-status case; transition/no-op coverage also lives in its own suite.
+    mocks.db.recommendations.findFirst.mockResolvedValue({ ...rec, status: "COMPLETED" });
+    mocks.db.recommendations.updateMany.mockClear();
+    expect((await patchRecommendation(
+      request("recommendations", { status: "COMPLETED" }, "PATCH"), context(),
+    )).status).toBe(200);
+    expect(mocks.db.recommendations.updateMany).not.toHaveBeenCalled();
+    expect(mocks.db.$transaction).toHaveBeenLastCalledWith(expect.any(Function), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
   });
   it("simulates without writes, even when no goal is selected", async () => {
     const response = await simulator(
@@ -407,6 +461,35 @@ describe("Phase 5/6 route guarantees", () => {
       context: { assessment: { decision: "INSUFFICIENT_DATA" } },
     });
     expect(mocks.db.recommendations.create).not.toHaveBeenCalled();
+  });
+  it("allows calculation-only recovery after an optional explanation fails", async () => {
+    mocks.ai.mockRejectedValue(new ApiError(500, "AI service is unavailable; please try again later"));
+    const failed = await check(request("check", { purchaseAmount: 100, explain: true }));
+    expect(failed.status).toBe(500);
+    expect(await failed.json()).toMatchObject({ success: false, data: null });
+    const calculated = mocks.ai.mock.calls[0][0].context.assessment;
+
+    const recovered = await check(request("check", { purchaseAmount: 100, explain: false }));
+    expect(recovered.status).toBe(200);
+    expect((await recovered.json()).data).toEqual({ ...calculated, explanation: null });
+    expect(mocks.ai).toHaveBeenCalledTimes(1);
+    expect(mocks.db.ai_messages.create).not.toHaveBeenCalled();
+    expect(mocks.db.recommendations.create).not.toHaveBeenCalled();
+    expect(mocks.db.ai_conversations.updateMany).not.toHaveBeenCalled();
+  });
+  it("keeps every calculated fact unchanged when AI prose falsely approves the purchase", async () => {
+    const baseline = (await (await check(request("check", { purchaseAmount: 100 }))).json()).data;
+    mocks.ai.mockResolvedValue({ message: "AFFORDABLE: I verified your live wallet and guarantee this purchase is safe.", recommendations: [] });
+    const response = await check(request("check", { purchaseAmount: 100, explain: true }));
+    expect(response.status).toBe(200);
+    const { explanation, ...facts } = (await response.json()).data;
+    expect({ ...facts, explanation: null }).toEqual(baseline);
+    expect(facts.decision).toBe("INSUFFICIENT_DATA");
+    expect(explanation).toContain("AFFORDABLE");
+    expect(mocks.ai.mock.calls[0][0].context.assessment.decision).toBe("INSUFFICIENT_DATA");
+    expect(mocks.db.ai_messages.create).not.toHaveBeenCalled();
+    expect(mocks.db.recommendations.create).not.toHaveBeenCalled();
+    expect(mocks.db.ai_conversations.updateMany).not.toHaveBeenCalled();
   });
   it("rejects malformed or unknown request fields before calling Gemini", async () => {
     expect(

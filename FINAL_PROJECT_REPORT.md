@@ -1,4 +1,4 @@
-# UPAY AI Financial Coach
+# Upay AI Financial Coach
 
 **Final Project Report**
 
@@ -6,25 +6,43 @@ AI-Powered Personal Financial Management and Decision-Support Prototype
 
 Live Application: https://upay-ai-hackathon.vercel.app/
 
-Team Name: HackStreetBoys
+Team Name: HackStreet Boys Team
 
 Institution: Daffodil International University
 
 Hackathon/Event: AI Hackathon/Upay AI Dev Fest 2026
 
-Submission Date: 4/10/2026
+Submission Date: 4 October 2026 (2026-10-04)
 
-This report documents the inspected repository as of 3 October 2026. It describes a prototype based on user-recorded financial data, without a live Upay wallet connection or official Upay endorsement.
+Report revision: 10 October 2026
+
+The original report documents repository context from 3 October 2026; customer-impact and offline AI evidence were extended on 7 October, and Stage 6 reliability evidence was refreshed on 8 October 2026. It describes a prototype based on user-recorded financial data, without a live Upay wallet connection or official Upay endorsement.
 
 <!-- PAGE BREAK -->
 
 # Table of Contents
 
-[TOC]
+1. [Cover](#upay-ai-financial-coach)
+2. [Executive Summary](#2-executive-summary)
+3. [Introduction & Problem Statement](#3-introduction--problem-statement)
+4. [Objectives, Scope & Requirements](#4-objectives-scope--requirements)
+5. [System Architecture & Workflow](#5-system-architecture--workflow)
+6. [Database Design](#6-database-design)
+7. [Technology Stack](#7-technology-stack)
+8. [Core Features & Implementation](#8-core-features--implementation)
+9. [AI & Financial Intelligence](#9-ai--financial-intelligence)
+10. [Important Financial Calculations](#10-important-financial-calculations)
+11. [Security, Privacy & Responsible AI](#11-security-privacy--responsible-ai)
+12. [Testing & Deployment](#12-testing--deployment)
+13. [Results, Limitations & Future Scope](#13-results-limitations--future-scope)
+14. [Conclusion](#14-conclusion)
+15. [References](#15-references)
 
-Report organization: the cover is Section 1; numbered technical sections run from 2 to 15. Core implementation is grouped into nine modules in Section 8. Three diagrams summarize architecture, workflow and database relationships. Seven compact screenshot placeholders identify evidence to add before submission.
+Report organization: the cover is Section 1; numbered technical sections run from 2 to 15. Core implementation is grouped into nine modules in Section 8. Three diagrams summarize architecture, workflow and database relationships. Seven project screenshots document the public introduction and core workspace screens.
 
-Evidence policy: implementation claims are grounded in the current source, not promotional material. Test outcomes are reported only where observed during this session. Configured build, browser and smoke procedures are distinguished from executed checks. The supplied production URL identifies the application; production configuration and authenticated production behavior were not independently audited.
+Evidence policy: implementation claims are grounded in the current source, not promotional material. Section 12 separates fresh local, mocked-browser, offline and simulated results from historical evidence and checks not performed. The supplied production URL identifies the application; production configuration and authenticated production behavior were not independently audited.
+
+Screenshot provenance: the seven images in [docs/screenshots](docs/screenshots) are unedited captures of this project's real local production build from the passed Playwright desktop run on 9 October 2026, at a 1440-pixel viewport. Workspace screens use synthetic Auth/API fixtures; chat replies are authored examples, not live Gemini output. Fixture values exercise presentation and need not represent a mutually consistent account or a backend-calculated assessment. These screenshots demonstrate UI rendering, not customer records, financial outcomes or authenticated production behavior. Original test captures remain preserved locally; only the seven selected report assets are included in the repository.
 
 <!-- PAGE BREAK -->
 
@@ -36,7 +54,7 @@ UPAY AI Financial Coach addresses this problem through an integrated personal fi
 
 The project separates deterministic calculation from generative explanation. Backend modules calculate balances, goal progress, required monthly saving, wellness scores, spending-reduction plans, savings projections and affordability verdicts. Google Gemini receives minimized, precomputed financial context and limited conversation history to produce natural-language coaching and qualitative recommendations. English, Bangla and Banglish are supported, with structured response validation and a Latin-script check for Banglish. Optional AI affordability explanations describe an already calculated assessment.
 
-The implementation uses Next.js App Router, React and TypeScript for the interface and API handlers; Supabase Auth for identity; PostgreSQL and Prisma for persistence; Zod for validation; and custom CSS and SVG for presentation. The repository points to GitHub version control and documents a Vercel deployment with Supabase services. Vitest and Playwright provide mocked and fixture-backed verification paths. During report preparation, 222 tests across 23 Vitest files passed; earlier checks in this session passed TypeScript and completed ESLint with five existing warnings.
+The implementation uses Next.js App Router, React and TypeScript for the interface and API handlers; Supabase Auth for identity; PostgreSQL and Prisma for persistence; Zod for validation; and custom CSS and SVG for presentation. The repository points to GitHub version control and documents a Vercel deployment with Supabase services. Vitest and Playwright provide mocked and fixture-backed verification paths. Historical report preparation recorded 222 tests across 23 Vitest files, a passing typecheck and five lint warnings. Fresh Stage 6 results and their evidence boundaries are recorded in Section 12.
 
 The resulting prototype demonstrates an end-to-end journey from recorded activity to understandable financial guidance. It does not synchronize an Upay wallet, verify liquid funds, execute payments, determine creditworthiness or replace professional advice. Its value is a transparent combination of financial calculations, goal tracking and multilingual explanation.
 
@@ -46,9 +64,9 @@ The project is motivated by a practical gap: people may know individual income a
 
 The proposed solution brings records, goals, analytics, planning and coaching into one authenticated workspace. BDT presentation and Asia/Dhaka date handling support the local use context. AI is used to make supplied financial facts easier to understand and to offer qualitative budgeting suggestions; reproducible numerical decisions remain in application code.
 
-[Insert Figure: Home Page]
+![Public home page of Upay AI Financial Coach](docs/screenshots/home.png)
 
-Figure 1. Public landing page introducing the prototype and account entry points.
+Figure 1. Public landing page introducing the prototype and account entry points. The supplied promotional carousel is external imagery, not prototype functionality or a verified current offer.
 
 <!-- PAGE BREAK -->
 
@@ -103,16 +121,19 @@ Prisma connects to PostgreSQL using a server-side connection string. Calculation
 ```mermaid
 flowchart LR
   U[User] --> A[Authentication]
-  A --> T[Record transactions]
-  T --> D[Dashboard / analytics]
-  D --> G[Savings goals]
-  G --> P[Financial planning]
-  P --> C[AI coach]
-  C --> R[Review recommendations]
-  R --> D
+  A --> T[Manually recorded activity]
+  T --> G[Goal target, saved amount and deadline]
+  G --> S[Required saving, capacity, gap and feasibility]
+  S -. Separate customer action .-> P[Purchase check with goal reserves and expense-based buffer]
+  T --> P
+  G --> P
+  P --> V[Deterministic verdict and assumptions]
+  V -. Explicit opt-in .-> E[Multilingual purchase explanation]
+  T -. Optional summaries .-> C[AI Coach]
+  G -. Optional selected goal .-> C
 ```
 
-Figure 3. Typical user workflow; modules remain independently accessible after sign-in.
+Figure 3. The two customer decision journeys share recorded context. Purchase explanation and separate summary-based coaching are optional; the tools remain independently accessible after sign-in.
 
 The user records activity, reviews results, tracks contributions, explores scenarios and deliberately submits a coaching request. Recommendations can be marked read, completed or dismissed. This journey does not initiate a transfer or purchase. Vercel is the documented Next.js host; Supabase provides authentication and PostgreSQL services.
 
@@ -182,7 +203,7 @@ Table 3. Technologies actually declared or implemented in the repository.
 | ESLint ^9.39.5 | Static checks with Next.js and TypeScript rules. |
 | npm, Git / GitHub, Vercel | Dependency/build scripts, version control and documented Next.js hosting. |
 
-Versions are package.json declarations, including range prefixes; they are not claims about every production runtime. The UI uses local components, native progress elements and custom visualizations rather than an external chart or component library. The build command is prisma generate followed by next build.
+Versions are package.json declarations, including range prefixes; they are not claims about every production runtime. The UI uses local components, native progress elements and custom visualizations, with Recharts 3.10.1 for selected Analytics visualizations. The build command is prisma generate followed by next build.
 
 # 8. Core Features & Implementation
 
@@ -202,7 +223,7 @@ The dashboard shows recorded cash-flow balance, current-calendar-month income an
 
 Separate spending and financial-health requests populate cash-flow trends, category spending and the wellness overview. Recommendations and quick actions connect the summary to transactions, goals, coaching and planning. Displayed recorded balance is not a verified wallet balance.
 
-[Insert Figure: Financial Dashboard]
+![Financial dashboard displaying synthetic recorded activity and goal summaries](docs/screenshots/dashboard.png)
 
 Figure 5. Dashboard combining recorded activity, goal savings, trends and wellness.
 
@@ -212,9 +233,9 @@ Users record CASH_IN, CASH_OUT, MERCHANT_PAY or MOBILE_RECHARGE activity with a 
 
 Financial aggregation uses category_type to identify income and expenses. Transaction summary cards use dashboard totals, while the history count reflects the selected filters. Deleting a transaction preserves goal contribution history through the nullable source reference. There is no actual transfer, wallet debit or merchant payment execution.
 
-[Insert Figure: Transaction Management]
+![Transaction entry form and synthetic transaction history with filters and edit/delete controls](docs/screenshots/transactions.png)
 
-Figure 6. Transaction entry and filtered history with edit/delete controls.
+Figure 6. Transaction entry, history filters and edit/delete controls with synthetic records.
 
 ## 8.4 Savings Goals
 
@@ -222,9 +243,9 @@ Goal creation records name, target, starting savings and target date. Detail vie
 
 Active/paused goals can be edited, paused or resumed. Archive sets CANCELLED rather than deleting history; completed goals cannot be archived. Once contribution history exists, the API prevents direct replacement of current savings. An active goal can request a deterministic spending-reduction savings plan with category budgets and deadline feasibility.
 
-[Insert Figure: Savings Goal]
+![Savings goal details displaying synthetic savings progress, required monthly saving and contribution controls](docs/screenshots/savings-goal.png)
 
-Figure 7. Goal progress, contribution history and required monthly saving.
+Figure 7. Goal progress, required monthly saving, contribution controls and the empty contribution-history state in the synthetic fixture.
 
 Source anchors: dashboard/summary, transactions and goals API handlers; lib/finance.ts; lib/savings-plan.ts; corresponding workspace pages.
 
@@ -236,7 +257,7 @@ Spending analytics calculates income, expenses, net cash flow, category amounts/
 
 Wellness is calculated separately, by default from three 30-day averaging months and current non-cancelled goal balances. Savings, spending, goals and emergency scores each contribute 25% to the overall illustrative score. The interface displays all four components and permits saving an assessment. Paginated history reads stored scores and assessment dates; original inputs and formula versions are not stored in the health table. Changing the spending chart period does not automatically change the wellness request.
 
-[Insert Figure: Analytics & Financial Wellness]
+![Recharts monthly trends, exact BDT table and four illustrative wellness components with synthetic data](docs/screenshots/analytics.png)
 
 Figure 8. Spending trends and the four-component illustrative wellness assessment.
 
@@ -250,9 +271,9 @@ The UI supplies a UUID requestId. A retry of an already committed request can re
 
 Recommendations display LOW/MEDIUM/HIGH priority and NEW/VIEWED/COMPLETED/DISMISSED status. NEW can transition to any later state; VIEWED can complete or dismiss; terminal states cannot change. Repeating the same status is a no-op. Sanitized errors distinguish configuration, provider, timeout and validation failures without exposing raw prompts or keys.
 
-[Insert Figure: AI Financial Coach]
+![AI Coach interface displaying authored English, Bangla and Banglish fixture messages](docs/screenshots/ai-coach.png)
 
-Figure 9. Persisted conversation, language selection and recommendation actions.
+Figure 9. Conversation view, language selection and recommendation actions with authored English, Bangla and Banglish fixture messages; no live Gemini response is shown.
 
 Source anchors: lib/analytics.ts; lib/financial-health.ts; lib/coach-context.ts; lib/gemini.ts; coach message handlers; lib/recommendation-status.ts.
 
@@ -272,9 +293,9 @@ The emergency buffer multiplies average monthly expenses by the chosen months. A
 
 AFFORDABLE, CAUTION, NOT_AFFORDABLE and INSUFFICIENT_DATA are backend decisions. Optional Gemini explanation describes the already computed result; it does not change the verdict. Calculation-only assessment does not call Gemini. Neither mode executes a purchase or changes savings.
 
-[Insert Figure: Savings Simulator & Affordability]
+![What-if savings simulator and purchase-affordability input forms](docs/screenshots/planning.png)
 
-Figure 10. Hypothetical savings inputs alongside the recorded-data purchase assessment.
+Figure 10. Hypothetical savings and recorded-data purchase-assessment input forms. No calculated result or AI explanation is shown in this capture.
 
 ## 8.9 Profile & Navigation
 
@@ -405,20 +426,42 @@ The prototype has no live wallet access, payment tools or purchase execution. We
 
 # 12. Testing & Deployment
 
-Table 4. Verified outcomes and available verification paths.
+The subsequent Analytics Recharts redesign and final tooltip/documentation fixes passed 358/358 Vitest tests and 64/64 mocked browser cases on 9 October 2026. The [latest local verification summary](README.md#testing--quality-assurance) records the remaining checks and evidence boundaries; the stage-specific results below are preserved historical evidence.
 
-| Check | Evidence and status |
-| --- | --- |
-| Vitest | Executed during report preparation: 23 test files, 222 tests passed. |
-| Targeted UI tests | Earlier in this session: 4 files, 17 tests passed; included public navigation and financial UI. |
-| TypeScript | Earlier in this session: npm run typecheck passed; application source has not been changed for the report. |
-| ESLint | Earlier in this session: exit 0, no errors, 5 existing warnings in untouched effect/ref code. |
-| Playwright | Source inspected; desktop Chrome and iPhone-sized Chromium fixtures exist. Not rerun for this report. |
-| Production build | npm run build is configured; no new build result is claimed for report preparation. |
-| Startup/smoke | scripts/verify-startup.mjs and scripts/smoke.mjs inspected; not executed for this report. |
-| Live production | URL supplied by owner; authenticated production and live provider behavior were not audited. |
+**Fresh Stage 9 documentation verification, 8 October 2026:** typecheck PASS; ESLint 0 errors/5 existing warnings; 326/326 Vitest tests in 29 files PASS (0 failed/skipped); Node-native local import/secret-pattern audit PASS; 45 local documentation links/anchors valid; `git diff --check` PASS. Checks exited 0. Application/test code and Stage 7/8 reviews were preserved; only this report, README and the new [Stage 9 review](STAGE9_INNOVATION_DIFFERENTIATION.md) were changed/added. Build/browser were not rerun for documentation changes; Stage 8 results below remain historical. These checks do not measure competitive advantage, AI usefulness or customer impact.
 
-Vitest covers arithmetic, validation, auth/ownership, routes, API clients, output parsing, language rules, retry/persistence behavior and UI regressions. Gemini suites mock the SDK or inject synthetic HTTP transports. Browser fixtures intercept Auth/API traffic with synthetic users and records. These tests do not prove live model quality, quota availability or production RLS deployment. No live AI verification script was run.
+Stage 8 Responsible AI/security review is recorded in [STAGE8_RESPONSIBLE_AI_SECURITY.md](STAGE8_RESPONSIBLE_AI_SECURITY.md) with exact provider context, threats, privacy/consent, deletion inventory and separate fresh checks. The README control matrix distinguishes tested implementation from production verification. Financial formulas and the emergency-savings proxy remain unchanged; factual prose validation, account-wide deletion, automatic retention and deployed RLS verification remain unresolved.
+
+**Fresh Stage 8 resume verification, 8 October 2026:** typecheck PASS; ESLint 0 errors/5 existing warnings; 326/326 Vitest tests in 29/29 files PASS; focused Responsible AI/security checks 123/123 in seven files PASS; production build PASS; complete mocked browser 60/60 PASS (desktop 30/30, mobile 30/30; no failed/skipped/flaky cases); Node-native local import/secret-pattern audit PASS (136 source files and 18 commits, no findings); `git diff --check` PASS. All commands exited 0. The known Windows teardown issue required stopping only this run's verified local Next server after all cases passed, allowing Playwright to report its final success/JSON. This resume changed only documentation, preserved existing Stage 6/7/8 source/tests and added no features. Mobile is Chromium/Chrome emulation, not physical-device Safari. These results do not prove deployed RLS, prompt-injection immunity, truthful AI prose or production security. Exact reproduction/evidence and remaining limits are in the Stage 8 report; Stage 6/7 evidence below remains historical.
+
+Stage 7 scalability/integration review is recorded in [STAGE7_SCALABILITY_INTEGRATION.md](STAGE7_SCALABILITY_INTEGRATION.md), including architecture, API protection, DB/RLS/connection audit, future authorized MFS design and separate fresh verification. Stage 6 evidence below is preserved. The new limiter is process-local, not distributed; Upay integration remains design-only.
+
+Table 4. Stage 6 verification matrix — local evidence collected on 8 October 2026.
+
+| Evidence category | Observed status | What it establishes / limitation |
+| --- | --- | --- |
+| STATIC / LOCAL VERIFICATION | Typecheck PASS; ESLint 0 errors/5 existing warnings; 315/315 Vitest tests in 27/27 files PASS (0 failed/skipped); production build PASS. All commands exited 0. | Strict types, lint, complete Vitest regression suite and local production build; no load or live database benchmark. |
+| MOCKED BROWSER VERIFICATION | Final complete run: 60/60 PASS in one file, desktop 30/30 and mobile 30/30; 0 failed/skipped; exit 0. Focused changed cases also 4/4 PASS. | Real built UI, intercepted Auth/application APIs, synthetic users and records; unmatched external browser traffic blocked. |
+| OFFLINE AI EVALUATION | 41/41 synthetic evaluation tests PASS, included in the final Vitest suite. | Real SDK request construction with injected transport, authored replies, schemas, multilingual script checks and factual counterexamples; no live model-quality metric. |
+| SIMULATED FAILURE / CONCURRENCY TESTS | 10/10 contribution tests PASS, included in the final Vitest suite; existing coach and recommendation tests retained. | Application-level conflict/concurrency handling under simulated conditions. Fixture snapshots, injected P2034, rollback and explicit retry; not real PostgreSQL/Supabase concurrency. |
+| HISTORICAL / MANUAL EVIDENCE | Original report: 222 tests/23 files and 5 lint warnings. Supplied Stage 5 record: 301 tests/26 files, typecheck/build PASS, 5 lint warnings, 41 evaluation tests. | Historical counts retained as historical. No fresh authenticated production, startup/smoke or remote Auth/database verification was performed in this resume. |
+| NOT VERIFIED | Production database concurrency; production load/performance, reliability and scalability; live wallet access/automatic ingestion; customer impact; live Gemini accuracy, Bangla/Banglish quality, production prompt-injection resistance and real provider availability. | Local/mocked/synthetic success does not establish these claims. |
+
+**PRE-STAGE-6-RESUME BASELINE:** `npm.cmd run typecheck` PASS; `npm.cmd run lint` exit 0, 0 errors/6 warnings; `npm.cmd test` 309/309 tests in 27/27 files PASS; `npm.cmd run build` PASS; `npm.cmd run test:browser` exit 1, 58 PASS/2 FAIL out of 60. Both browser failures were the same stale About-page section count (7 expected, 8 rendered) in the two projects. Source inspection identified related stale ecosystem wording and `pause/resume` casing. These were test drift after intentional Stage 1–4 changes, not a demonstrated application regression. The sixth lint warning was an unused import in the untracked contribution/concurrency suite.
+
+**Intermediate validation correction:** a later complete browser attempt returned 58 PASS/2 FAIL because this resumed session introduced an incorrect direct-adjacency assertion for introduction/carousel placement. Source review confirmed the existing promotional disclosure between them. The assertion was corrected to verify introduction → disclosure → carousel; the UI was unchanged. That attempt's log and error contexts were preserved under `coverage/stage6/stage6-intermediate-*` before the final complete rerun. A unique recommendation Serializable/no-op assertion was also preserved in the existing route suite during consolidation; typecheck/lint/full Vitest were rerun after that adjustment.
+
+**Final reproduction commands:** `npm.cmd run typecheck`, `npm.cmd run lint`, `npm.cmd test -- --reporter=default --reporter=json --outputFile=coverage/stage6/stage6-final-vitest.json`, `npm.cmd run build`, `npm.cmd run test:browser`. The earlier focused commands were `npm.cmd test -- tests/concurrency.test.ts tests/frontend-client.test.ts tests/phase56-routes.test.ts tests/ai-evaluation.test.ts` (102 tests/4 files PASS), and `npm.cmd run test:browser -- --grep 'public pages have distinct|empty records'` (4/4 PASS). Node `v24.15.0`, npm `11.12.1` and installed Chrome were used. No database push/seed, live Gemini script, paid external API, deployment, commit or push was performed.
+
+**Browser/user-flow evidence:** public navigation/history/CTAs; signup, login, confirmation UI, protected routes, session restoration and logout; dashboard; transaction history/creation/editing; goal creation/contribution/pause/resume/details and savings plans; analytics and illustrative wellness saving; simulator and affordability; multilingual synthetic coach messages/recommendation actions and conversation deletion; profile persistence; 404/callback; loading, HTTP failure/retry, error-boundary recovery and widths 320–1440. Generated screenshots cover public/auth pages and synthetic authenticated workspace screens under ignored `test-results/`. Captures are not production evidence, real-device Safari coverage or an automated visual-diff benchmark. Coverage is representative: transaction deletion/filter submission and goal archiving are not explicitly exercised as browser actions.
+
+**Failure boundaries:** failed forms preserve input; calculator edits clear stale results; delayed transaction reads show loading before HTTP 500, then recover on explicit Retry; malformed dashboard data reaches a recoverable error boundary. Offline API-client tests reject malformed JSON envelopes without an automatic retry, then accept an explicit new request. Existing provider tests cover unavailable/time-limited/rate-limited/malformed output and Banglish leakage. Optional purchase explanation failure returns an error for that request; explicitly retrying with explanation disabled returns the same deterministic assessment. No automatic explanation fallback is claimed.
+
+**Simulated conflict boundaries:** two real handler invocations reach a controlled fixture commit barrier using the same in-memory snapshot. A fixture-injected Prisma P2034 permits only one set of writes to be published, including when two goals share a source transaction; explicit retries revalidate the winning balance/allocation. Insert, goal-update and commit failures discard staged fixture writes and permit a later explicit retry. The fixture supplies rollback/serialization behavior; it does not test the database engine. Existing recommendation tests cover competing terminal actions and same-status no-ops; existing coach tests cover stale conversation guards, request-ID replay and mocked message/recommendation rollback. Contributions and general create endpoints have no request-ID deduplication or automatic transaction retry; refresh uncertain writes before retrying. Concurrent coach requests can still consume provider quota more than once.
+
+**Local test-environment limitation:** on this Windows sandbox, Playwright server teardown stalled after completed cases. `Stop-Process -Id <the local Next PID printed by [WebServer]> -Force` released teardown and allowed the runner to report its actual pass/fail status. The test runner and unrelated processes were not terminated. This cleanup issue is test infrastructure evidence, not an application regression. Raw logs and initial worktree copies are retained locally in ignored `coverage/stage6/`; rerunning commands reproduces the suites, not production verification.
+
+Vitest covers arithmetic, validation, auth/ownership, routes, API clients, output parsing, language rules, retry/persistence behavior and UI regressions. Gemini suites mock the SDK or inject synthetic HTTP transports. These tests do not prove live model quality, quota availability or production RLS deployment. No live AI verification script was run.
 
 <!-- PAGE BREAK -->
 
@@ -431,6 +474,30 @@ The documented release path uses Node.js 24 LTS, npm ci and npm run build. Node.
 Required configuration names include DATABASE_URL, the public SUPBASE_URL and SUPBASE_PUBLISHABLE_KEY (SUPABASE_* alternatives are supported), and GEMINI_API_KEY for AI requests. DIRECT_URL is optional for administrative CLI access; GOOGLE_API_KEY is a fallback and GEMINI_MODEL an optional override. No secret values are included here.
 
 There is no versioned Prisma migration history in the repository. Fresh database provisioning requires reviewing the schema, supplemental SQL constraints, RLS policies and category seed. An ordinary application build/deployment does not push/reset/seed the database. Neither deployment nor remote configuration was changed during documentation generation.
+
+## 12.2 Stage 6 resume and multi-agent change audit
+
+The resume started at `05d68ad` on `main`, matching the recorded `origin/main` reference. Initial status: one modified tracked file (`e2e/application.spec.ts`), two untracked files (`tests/concurrency.test.ts`, `install.cmd`) and no staged files. Status, full/summary/cached diffs, the latest 15 log/reflog entries, file history, scripts, tests/fixtures, relevant handlers and financial-write boundaries were reviewed before implementation. No production-code, formula, affordability-verdict, auth, schema, package/lockfile or test-configuration changes existed in the initial worktree.
+
+| Initial file/area | What existed / origin evidence | Completeness and risk | Decision in this resume |
+| --- | --- | --- | --- |
+| Committed application, tests, fixtures and docs | Category A: existing committed project code. HEAD contains the offline AI fixtures/evaluation and documentation. Commit authors identify a Git identity, not whether Codex/Antigravity edited the files. | Existing coach retry/rollback/provider guards, recommendation transitions and representative browser workflows were useful and complete within mocked boundaries. Verification documentation needed fresh results. | KEEP; preserve Stage 1–5 behavior and all committed test coverage. |
+| `e2e/application.spec.ts` | Public headings, core-decision copy, workflow labels and carousel order had been updated. These overlap the previous-Codex work described by the owner, but Git has no tool attribution. Category D: **Origin cannot be reliably determined from repository evidence.** | Useful partial stale-test alignment; no production/formula/auth change. About section count/ecosystem wording/casing remained stale. A count-only carousel check was weaker than a placement check. Low test-only regression risk. | KEEP existing alignment; ADJUST remaining stale assertions, verify introduction → promotional disclosure → carousel order, add controlled loading/recovery assertions and block unmatched external browser traffic. |
+| `tests/concurrency.test.ts` | Eight offline mocked contribution/recommendation/coach tests, untracked. Category D: **Origin cannot be reliably determined from repository evidence.** | Partially useful: four contribution cases; four recommendation/coach cases overlapped committed suites. No real competing contribution invocations, injected database conflicts or rollback fixture. Unused import produced a sixth lint warning. No production/formula/verdict/auth change. | ADJUST to ten focused contribution cases: preserved capacity/status/transaction safeguards, added COMPLETED status, competing requests, shared-source conflict and insert/update/commit failure recovery. Consolidated four overlaps into committed coverage, retaining the original recommendation Serializable/no-op assertion in `tests/phase56-routes.test.ts`. |
+| `install.cmd` | Untracked Antigravity CLI downloader/installer. Category C: possible Antigravity-related work based on explicit script content. **Origin cannot be reliably determined from repository evidence.** | Outside Stage 6; downloads/installs an executable if run. Not referenced by package scripts and no application/formula/auth effect while unused. Installer completeness was not exercised. | NEEDS REVIEW outside this task; preserved byte-for-byte and never executed. |
+
+**Previous Codex attribution:** the owner's resume request is historical context for prior Codex activity. No changed file can be confidently attributed to an earlier editing tool using the available Git evidence. Uncommitted test changes could also include Antigravity activity; authorship is not guessed. This session's edits are explicitly identified above and in the final response.
+
+**Preservation and conflicts:** useful existing work was reviewed before adjustment. The initial test files were copied into ignored local evidence storage, the installer was left unchanged, and all committed tests/AI fixtures were retained. The only duplicates identified were test cases already covered by committed coach/recommendation suites; no conflicting production edits or financial/auth regressions were discovered. No useful work was intentionally discarded without review. No destructive Git operation, commit, push, deployment or Stage 7 work was performed.
+
+| Relevant judge concern | Stage 6 status | Evidence / remaining boundary |
+| --- | --- | --- |
+| Visible source/user-flow evidence | ADDRESSED | Source-linked test suites, reproducible local checks and generated synthetic workspace screenshots. |
+| Stronger authenticated demonstration | PARTIALLY ADDRESSED | Signup/login/protected workflows, persistence and logout run against intercepted Auth/APIs; no real production account verification. |
+| Browser/build/database/provider failures | PARTIALLY ADDRESSED | Local production build and browser failure/recovery checks plus offline DB/provider error paths; hosting/live-service failure behavior unverified. |
+| Concurrent requests and recovery | PARTIALLY ADDRESSED | Competing mocked contribution/recommendation writes, injected P2034, rollback and coach replay; no production database/load test. |
+| Live deployment reliability | NOT ADDRESSED | No deployment or live production verification was performed; the supplied URL alone is not evidence. |
+| Production scale/performance | NOT ADDRESSED | No throughput, real load, multi-region or horizontal-scaling measurements. |
 
 # 13. Results, Limitations & Future Scope
 
@@ -472,6 +539,12 @@ The value hypotheses are that explicit saving requirements and gaps help custome
 
 The defensible differentiation is the combined customer workflow: goal-aware savings planning, reserve-aware purchase affordability, recorded MFS-oriented financial context, optional English/Bangla/Banglish explanation, and deterministic financial decisions separated from generative AI. This is product/workflow differentiation. No novel ML algorithm, proprietary prediction model, scientific innovation or superior performance is claimed. A future comparison against existing budgeting methods/tools should test the same two customer tasks.
 
+### Innovation and conceptual alternatives
+
+**Stage 9 review, 8 October 2026:** recorded activity → savings goal → required saving, capacity, gap and feasibility → a separately opened purchase assessment with saved-goal reserves and an estimated emergency buffer → optional multilingual explanation. The Savings Plan models one ACTIVE goal and excludes other-goal reserves; the purchase tool reserves saved amounts across all noncancelled goals and optionally checks one selected ACTIVE goal's monthly requirement. No automatic plan-to-purchase transfer or joint multi-goal optimization is claimed. General Coach receives summaries/selected-goal facts, not the complete Savings Plan result.
+
+The [Stage 9 review](STAGE9_INNOVATION_DIFFERENTIATION.md#conceptual-alternative-comparison) supplies the canonical seven-dimension, source-linked conceptual comparison: **A**, a defined basic expense tracker; **B**, a static spreadsheet/budget calculator; **C**, this prototype's calculation-only workflow; and **D**, the same workflow with optional multilingual AI. Dimensions are record context, savings commitments, emergency-buffer assumptions, purchase support, explanation clarity, multilingual assistance and limitations. The contribution is the connected decision presentation, not an individually novel feature or exclusive capability. Real trackers may offer additional features; spreadsheets can reproduce the formulas and be localized. C/D use the same deterministic financial rules; generated prose adds possible interpretation support and provider/privacy/factual risks, with no measured advantage. This is not a named-competitor study, benchmark, predictive-ML result or customer-impact finding.
+
 ### Actual validated impact — not established
 
 There are no verified customer interviews, survey findings, controlled/user studies, testimonials or behavioral follow-up results. Customer demand, the priority customer group, MFS-specific advantage, multilingual comprehension improvement, actual saving improvement, reduced spending, retention and financial independence remain unvalidated. Software pass counts, synthetic calculations, wellness scores and completed recommendation statuses do not establish customer or business benefit. The prototype does not verify Upay-customer status or connect to a live Upay wallet.
@@ -485,9 +558,9 @@ These demonstrations show implemented outputs, not a customer study. No particip
 
 ## 13.2 Product limitations and future scope
 
-Limitations include dependence on user-recorded data, no live wallet synchronization, illustrative wellness and goal-savings emergency proxies. Recorded balance and earmarked savings can overlap economically and do not establish liquidity. Simulations omit interest, fees, inflation and unrecorded commitments. AI prose can vary or be inaccurate, and provider quotas/timeouts can prevent responses. There is no dedicated per-user AI rate-limiting layer or automatic model fallback. The prototype is not a lending/credit system or professional financial-advice service.
+Limitations include dependence on user-recorded data, no live wallet synchronization, illustrative wellness and goal-savings emergency proxies. Recorded balance and earmarked savings can overlap economically and do not establish liquidity. Simulations omit interest, fees, inflation and unrecorded commitments. AI prose can vary or be inaccurate, and provider quotas/timeouts can prevent responses. Stage 7 provides six generation attempts per verified user per rolling minute per process; distributed rate protection, shared spend limits and automatic model fallback are absent. The prototype is not a lending/credit system or professional financial-advice service.
 
-Future work, not current functionality, includes authorized wallet/API integration and automatic transaction synchronization; smarter categorization, advanced budgeting and explicit emergency-reserve modeling; notifications and improved context-based AI personalization; per-user AI rate limits; a mobile application; and privacy-aware production monitoring. These require consent, operational controls and further validation before production use.
+Future work, not current functionality, includes authorized wallet/API integration and automatic transaction synchronization; smarter categorization, advanced budgeting and explicit emergency-reserve modeling; notifications and improved context-based AI personalization; distributed AI rate/spend protection; a mobile application; and privacy-aware production monitoring. These require consent, operational controls and further validation before production use.
 
 <!-- PAGE BREAK -->
 
@@ -517,6 +590,6 @@ The following official documentation pages were checked during report preparatio
 
 7. Vercel. Official documentation: https://vercel.com/docs
 
-Repository evidence: README.md, package.json, DEPLOYMENT.md, Prisma schema/SQL, app routes, components, calculation/auth/AI modules, tests/, e2e/application.spec.ts and verification configurations/scripts. Documentation review date: 3 October 2026. Team identity and submission date remain intentionally unspecified.
+Repository evidence: README.md, package.json, DEPLOYMENT.md, Prisma schema/SQL, app routes, components, calculation/auth/AI modules, tests/, e2e/application.spec.ts and verification configurations/scripts. Documentation review date: 10 October 2026. The team name and submission date above are confirmed by the submitting user. Institution and event details are retained from the supplied report.
 
-Submission completion items: replace the five cover placeholders; insert the seven captioned screenshots using synthetic or consented data. Screenshots are placeholders, not claims of captured production evidence. Recheck pagination after inserting images.
+Submission completion items: individual authors, registered team-member names, IDs and roles have not been supplied or verified. If the submission form requires those details, provide them separately; they must not be inferred from Git usernames or other projects. The seven captioned screenshots are included above; raw browser artifacts remain local. Recheck pagination if exporting this Markdown report to PDF.

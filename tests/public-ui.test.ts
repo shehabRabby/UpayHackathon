@@ -6,8 +6,19 @@ const auth = vi.hoisted(() => ({ loading: false, session: null as null | { user:
 vi.mock("@/components/auth-provider", () => ({ useAuth: () => auth }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 import { PublicActions, PublicHeader, PublicFooter } from "@/components/public-layout";
+import Security from "@/app/security/page";
 
 describe("Public navigation follows the existing auth state", () => {
+  it("discloses optional provider data use, synthetic tests and incomplete deletion/retention", () => {
+    const html = renderToStaticMarkup(createElement(Security));
+    expect(html).toContain("configured Gemini provider");
+    expect(html).toContain("Calculation-only features do not need Gemini");
+    expect(html).toContain("synthetic/mock fixtures, not customer records");
+    expect(html).toContain("No automatic retention period is implemented");
+    expect(html).toContain("its recommendations remain");
+    expect(html).toContain("Account-wide data deletion is not currently implemented");
+    expect(html).toContain("AI can make mistakes");
+  });
   beforeEach(() => { auth.loading = false; auth.session = null; auth.logout.mockClear(); });
   it("offers account creation and login only when signed out", () => {
     const header = renderToStaticMarkup(createElement(PublicHeader));
